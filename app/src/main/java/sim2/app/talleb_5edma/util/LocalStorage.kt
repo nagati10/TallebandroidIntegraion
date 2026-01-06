@@ -2,7 +2,6 @@ package sim2.app.talleb_5edma.util
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
-import sim2.app.talleb_5edma.network.WebSocketCallManager
 
 const val PREF_NAME = "user"
 const val KEY_EMAIL = "email"
@@ -89,7 +88,7 @@ fun debugTokenInfo(context: Context): String {
 }
 
 // FIXED: Proper forceClearAllData function that clears EVERYTHING
-fun forceClearAllData(context: Context, callManager: WebSocketCallManager? = null ) {
+fun forceClearAllData(context: Context) {
     // Clear main user preferences (PREF_NAME = "user")
     getSharedPref(context).edit {
         clear()
@@ -101,7 +100,7 @@ fun forceClearAllData(context: Context, callManager: WebSocketCallManager? = nul
         clear()
         apply()
     }
-    callManager?.disconnect()
+
     // Debug: Verify everything is cleared
     val mainPrefsCleared = getToken(context).isEmpty() && getEmail(context).isEmpty()
     val appPrefsCleared = getSavedOTP(context).isEmpty() && getSavedEmail(context).isEmpty()
@@ -150,4 +149,57 @@ fun verifyDataCleared(context: Context): Boolean {
             "AllCleared: $allCleared")
 
     return allCleared
+}
+
+// ==================== ROUTINE ANALYSIS CACHE ====================
+
+const val ROUTINE_CACHE_PREFS = "routine_cache"
+const val ROUTINE_CACHE_KEY = "routine_analysis_data"
+const val ROUTINE_CACHE_TIMESTAMP_KEY = "routine_analysis_timestamp"
+const val CACHE_DURATION_MS = 5 * 60 * 1000L // 5 minutes
+
+fun getRoutineCachePrefs(context: Context): SharedPreferences {
+    return context.getSharedPreferences(ROUTINE_CACHE_PREFS, Context.MODE_PRIVATE)
+}
+
+fun saveRoutineAnalysisCache(context: Context, data: String) {
+    getRoutineCachePrefs(context).edit {
+        putString(ROUTINE_CACHE_KEY, data)
+        putLong(ROUTINE_CACHE_TIMESTAMP_KEY, System.currentTimeMillis())
+        apply()
+    }
+    println("CatLog: Routine analysis cache saved")
+}
+
+fun getRoutineAnalysisCache(context: Context): String? {
+    val prefs = getRoutineCachePrefs(context)
+    val timestamp = prefs.getLong(ROUTINE_CACHE_TIMESTAMP_KEY, 0)
+    val now = System.currentTimeMillis()
+    
+    if (now - timestamp > CACHE_DURATION_MS) {
+        println("CatLog: Routine analysis cache expired")
+        clearRoutineAnalysisCache(context)
+        return null
+    }
+    
+    val cached = prefs.getString(ROUTINE_CACHE_KEY, null)
+    if (cached != null) {
+        println("CatLog: Routine analysis cache found (age: ${(now - timestamp) / 1000}s)")
+    }
+    return cached
+}
+
+fun clearRoutineAnalysisCache(context: Context) {
+    getRoutineCachePrefs(context).edit {
+        clear()
+        apply()
+    }
+    println("CatLog: Routine analysis cache cleared")
+}
+
+fun isRoutineCacheValid(context: Context): Boolean {
+    val prefs = getRoutineCachePrefs(context)
+    val timestamp = prefs.getLong(ROUTINE_CACHE_TIMESTAMP_KEY, 0)
+    val now = System.currentTimeMillis()
+    return (now - timestamp) <= CACHE_DURATION_MS && prefs.getString(ROUTINE_CACHE_KEY, null) != null
 }

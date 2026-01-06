@@ -17,7 +17,7 @@ import sim2.app.talleb_5edma.util.saveOTPLocally
 import java.util.Locale
 
 // Global test mode variable
-var testMode: Boolean = true
+var testMode: Boolean = false
 
 private val client = HttpClient()
 

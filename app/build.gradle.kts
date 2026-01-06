@@ -42,11 +42,6 @@ android {
     buildFeatures {
         compose = true
     }
-    packaging {
-        jniLibs {
-            useLegacyPackaging = true
-        }
-    }
 }
 
 dependencies {
@@ -74,8 +69,6 @@ dependencies {
 
     // Room Database
     implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.ui.graphics)
-    implementation(libs.androidx.core.splashscreen)
     ksp(libs.androidx.room.compiler)
 
     // Ktor
@@ -99,9 +92,6 @@ dependencies {
     // Maps Compose
     implementation("com.google.maps.android:maps-compose:4.3.3")
 
-    // OpenStreetMap
-    implementation("org.osmdroid:osmdroid-android:6.1.18")
-
     // CameraX
     implementation("androidx.camera:camera-camera2:1.3.4")
     implementation("androidx.camera:camera-lifecycle:1.3.4")
@@ -112,22 +102,6 @@ dependencies {
 
     // Lifecycle Compose
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
-
-
-    implementation("com.google.accompanist:accompanist-flowlayout:0.28.0")
-
-    implementation("androidx.media3:media3-exoplayer:1.8.0")
-    implementation("androidx.media3:media3-exoplayer-dash:1.8.0")
-    implementation("androidx.media3:media3-ui:1.8.0")
-    implementation("androidx.media3:media3-ui-compose:1.8.0")
-
-    // ✅ Socket.IO for signaling (keep this)
-    implementation("io.socket:socket.io-client:2.1.0")
-    implementation("com.mesibo.api:webrtc:1.0.5")
-
-    // Retrofit
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
 
     // Desugaring
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")

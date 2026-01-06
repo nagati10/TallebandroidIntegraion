@@ -16,9 +16,9 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        jcenter()
     }
 }
 
 rootProject.name = "Talleb_5edma"
 include(":app")
+ 

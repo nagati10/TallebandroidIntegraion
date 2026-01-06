@@ -29,14 +29,15 @@ import io.ktor.serialization.gson.gson
 
 // These imports are for logging network requests and responses
 // They help us see what's happening "under the hood" of our internet messenger
-//import io.ktor.client.plugins.logging.LogLevel
-//import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logging
+import android.util.Log
 
 
 // ==================== BASE URL CONSTANT ====================
 
-//const val BASE_URL = "http://10.0.2.2:3005"
-const val BASE_URL = "https://talleb-5edma.onrender.com"
+//const val BASE_URL = "http://10.0.2.2:3005"  // Émulateur local
+const val BASE_URL = "https://talleb-5edma.onrender.com"  // Backend Render
 
 
 // ==================== HTTP CLIENT CONFIGURATION ====================
@@ -52,21 +53,26 @@ val client = HttpClient(CIO) {
         // Default was too short, causing "connect timeout" errors
         connectTimeoutMillis = 30_000
 
-        // Wait up to 60 seconds for the server to respond
-        // Gives the server enough time to process login/signup requests
-        requestTimeoutMillis = 1200_000
+        // Wait up to 5 minutes for the server to respond (PDF processing can be slow)
+        // Gives the server enough time to process PDF with AI
+        requestTimeoutMillis = 300_000
 
-        // Wait up to 30 seconds to receive data from the server
+        // Wait up to 5 minutes to receive data from the server
         // Prevents hanging if the server starts sending but is very slow
-        socketTimeoutMillis = 1200_000
+        socketTimeoutMillis = 300_000
     }
 
     // ==================== LOGGING CONFIGURATION ====================
     // This helps us see what's happening with network requests
-    /* install(Logging) {
-         // Log all network requests and responses
-         level = LogLevel.ALL
-     }*/
+    install(Logging) {
+        // Log all network requests and responses
+        level = LogLevel.ALL
+        logger = object : io.ktor.client.plugins.logging.Logger {
+            override fun log(message: String) {
+                Log.d("Ktor", message)
+            }
+        }
+    }
 
     // ==================== CONTENT NEGOTIATION SETUP ====================
     // This tells our messenger: "Install the ability to understand different data formats"

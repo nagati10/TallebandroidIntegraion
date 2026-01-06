@@ -5,19 +5,12 @@ import android.net.Uri
 import android.util.Patterns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -30,22 +23,18 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.*
+import androidx.compose.ui.draw.*
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.*
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import kotlinx.coroutines.*
@@ -55,22 +44,21 @@ import sim2.app.talleb_5edma.models.User
 import sim2.app.talleb_5edma.network.UpdateUserRequest
 import sim2.app.talleb_5edma.network.UserRepository
 import sim2.app.talleb_5edma.network.sendOTPEmail
+import sim2.app.talleb_5edma.util.*
 import sim2.app.talleb_5edma.util.BASE_URL
-import sim2.app.talleb_5edma.util.FileUtils
-import sim2.app.talleb_5edma.util.forceClearAllData
-import sim2.app.talleb_5edma.util.getSavedOTP
-import sim2.app.talleb_5edma.util.getToken
 
 /* -------------------------------------------------------------------------- */
-/* UI PALETTE                                   */
+/*                               UI PALETTE                                   */
 /* -------------------------------------------------------------------------- */
-private val Primary = Color(0xFF000000)
-private val Accent = Color(0xFF000000)
-
-private val CardBg = Color(0xD2FFFFFF)
+private val Primary = Color(0xFF0D9488)      // Teal
+private val PrimaryLight = Color(0xFF5EEAD4)
+private val Accent = Color(0xFFFF9800)       // Orange
+private val BackgroundStart = Color(0xFFECFEFF)
+private val BackgroundEnd = Color(0xFFE0F2FE)
+private val CardBg = Color(0x99FFFFFF)       // Glass-morphism (alpha 60%)
 
 /* -------------------------------------------------------------------------- */
-/* MAIN SCREEN                                   */
+/*                               MAIN SCREEN                                   */
 /* -------------------------------------------------------------------------- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,6 +72,7 @@ fun EditProfileScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    // ---------- Token ----------
     val actualToken by remember {
         derivedStateOf {
             token?.takeIf { it.isNotEmpty() }
@@ -91,6 +80,7 @@ fun EditProfileScreen(
         }
     }
 
+    // ---------- State ----------
     var currentUser by remember { mutableStateOf(user) }
     var isLoadingUser by remember { mutableStateOf(user == null) }
     var fetchError by remember { mutableStateOf<String?>(null) }
@@ -109,6 +99,24 @@ fun EditProfileScreen(
     var successMessage by remember { mutableStateOf("") }
     var isChangingPassword by remember { mutableStateOf(false) }
 
+    // ---------- Gradient animation ----------
+    val infiniteTransition = rememberInfiniteTransition(label = "bg")
+    val anim by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(8000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ), label = "gradient"
+    )
+
+    val brush = Brush.linearGradient(
+        colors = listOf(BackgroundStart, PrimaryLight, BackgroundEnd),
+        start = Offset(0f, 0f),
+        end = Offset(anim * 1000f, anim * 1000f)
+    )
+
+    // ---------- Reset when token disappears ----------
     LaunchedEffect(actualToken) {
         if (actualToken.isEmpty()) {
             currentUser = null
@@ -117,6 +125,7 @@ fun EditProfileScreen(
         }
     }
 
+    // ---------- Fetch user ----------
     LaunchedEffect(actualToken) {
         if (actualToken.isNotEmpty() && currentUser == null) {
             isLoadingUser = true
@@ -133,7 +142,7 @@ fun EditProfileScreen(
                         image = resp.image,
                         password = resp.password,
                         createdAt = resp.createdAt,
-                        updatedAt = resp.updatedAt,
+                        updatedAt = resp.updatedAt
                     )
                     currentUser = u
                     fullName = u.nom ?: ""
@@ -153,6 +162,7 @@ fun EditProfileScreen(
         }
     }
 
+    // ---------- Image picker ----------
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
@@ -171,6 +181,7 @@ fun EditProfileScreen(
         }
     }
 
+    // ---------- Snackbar helpers ----------
     LaunchedEffect(successMessage) {
         if (successMessage.isNotEmpty()) {
             scope.launch {
@@ -194,6 +205,7 @@ fun EditProfileScreen(
         }
     }
 
+    // ---------- Password change ----------
     fun handleChangePassword() {
         val mail = currentUser?.email.orEmpty()
         if (mail.isEmpty()) {
@@ -237,6 +249,7 @@ fun EditProfileScreen(
         }
     }
 
+    // ---------- Validation ----------
     val isFullNameValid = fullName.length >= 2
     val isEmailValid = remember(email) { Patterns.EMAIL_ADDRESS.matcher(email).matches() }
     val isContactValid = contact.length >= 8
@@ -247,6 +260,7 @@ fun EditProfileScreen(
                 contact != (currentUser?.contact ?: "")
     }
 
+    // ---------- UI ----------
     if (isLoadingUser) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = Primary)
@@ -255,12 +269,7 @@ fun EditProfileScreen(
     }
 
     if (fetchError != null || currentUser == null) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            contentAlignment = Alignment.Center
-        ) {
+        Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(fetchError ?: "User not found", color = Color.Red, textAlign = TextAlign.Center)
                 Spacer(Modifier.height(16.dp))
@@ -277,72 +286,30 @@ fun EditProfileScreen(
     }
 
     Scaffold(
-        topBar = @Composable {
+        topBar = {
             CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = "Edit Profile",
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 18.sp,
-                        letterSpacing = 0.15.sp,
-                        color = Color(0xFF1A1A1A)
-                    )
-                },
+                title = { Text("EDIT PROFILE", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(
-                        onClick = { navController?.popBackStack() },
-                        modifier = Modifier.padding(start = 4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color(0xFF424242)
-                        )
+                    IconButton(onClick = { navController?.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, tint = Primary, contentDescription = "Back")
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = {
-                            forceClearAllData(context)
-                            navController?.navigate(Routes.Screen1) {
-                                popUpTo(0) { inclusive = true }
-                            }
-                        },
-                        modifier = Modifier.padding(end = 4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                            contentDescription = "Logout",
-                            tint = Color(0xFF424242)
-                        )
+                    IconButton(onClick = { forceClearAllData(context); navController?.navigate(Routes.Screen1) }) {
+                        Icon(Icons.AutoMirrored.Filled.ExitToApp, tint = Primary, contentDescription = "Logout")
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color.White,
-                    titleContentColor = Color(0xFF1A1A1A),
-                    navigationIconContentColor = Color(0xFF424242),
-                    actionIconContentColor = Color(0xFF424242)
-                ),
-                modifier = Modifier.shadow(
-                    elevation = 2.dp,
-                    spotColor = Color.Black.copy(alpha = 0.1f)
-                )
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.White.copy(alpha = 0.9f))
             )
-        }
-
+        },
+        containerColor = Color.Transparent
     ) { pad ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .background(brush)
                 .padding(pad)
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.back),
-                contentDescription = null,
-                contentScale = ContentScale.FillBounds,
-                modifier = Modifier.matchParentSize()
-            )
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -470,7 +437,7 @@ fun EditProfileScreen(
                             strokeWidth = 3.dp,
                             modifier = Modifier.size(20.dp)
                         )
-                        else Text("Update Image", fontWeight = FontWeight.SemiBold)
+                        else Text("Update Image", fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                     }
                 }
 
@@ -489,6 +456,7 @@ fun EditProfileScreen(
                         verticalArrangement = Arrangement.spacedBy(20.dp)
                     ) {
 
+                        // ---- Name ----
                         ProfileTextField(
                             label = "Name",
                             value = fullName,
@@ -499,6 +467,7 @@ fun EditProfileScreen(
                             supportingText = if (fullName.isNotEmpty() && !isFullNameValid) "At least 2 characters" else null
                         )
 
+                        // ---- Email ----
                         ProfileTextField(
                             label = "Email",
                             value = email,
@@ -510,6 +479,7 @@ fun EditProfileScreen(
                             supportingText = if (email.isNotEmpty() && !isEmailValid) "Invalid email" else null
                         )
 
+                        // ---- Phone ----
                         ProfileTextField(
                             label = "Phone Number",
                             value = contact,
@@ -521,6 +491,7 @@ fun EditProfileScreen(
                             supportingText = if (contact.isNotEmpty() && !isContactValid) "At least 8 digits" else null
                         )
 
+                        // ---- Joined At (read-only) ----
                         currentUser?.createdAt?.let { joined ->
                             Column {
                                 Text("Joined at", style = MaterialTheme.typography.bodyMedium, color = Color(0xFF6B7280))
@@ -541,33 +512,11 @@ fun EditProfileScreen(
 
                         Spacer(Modifier.height(12.dp))
 
-                        // ---- NEW : bouton Analyse CV IA ----
-                        Button(
-                            onClick = {
-                                navController?.navigate("ai_cv")
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFFE91E63),
-                                contentColor = Color.White
-                            ),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp)
-                        ) {
-                            Text(
-                                "Analyser mon CV avec l'IA",
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-
-                        Spacer(Modifier.height(8.dp))
-
                         // ---- Change Password ----
                         Button(
                             onClick = { handleChangePassword() },
                             enabled = !isChangingPassword,
-                            colors = ButtonDefaults.buttonColors(containerColor = brightRed),
+                            colors = ButtonDefaults.buttonColors(containerColor = Accent),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -577,10 +526,10 @@ fun EditProfileScreen(
                                 color = Color.White,
                                 modifier = Modifier.size(20.dp)
                             )
-                            else Text("Change Password", fontWeight = FontWeight.SemiBold)
+                            else Text("Change Password", fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                         }
 
-                        Spacer(Modifier.height(9.dp))
+                        Spacer(Modifier.height(12.dp))
 
                         // ---- Save Changes ----
                         Button(
@@ -620,7 +569,7 @@ fun EditProfileScreen(
                                 color = Color.White,
                                 modifier = Modifier.size(20.dp)
                             )
-                            else Text("Save Changes", fontWeight = FontWeight.SemiBold)
+                            else Text("Save Changes", fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
                         }
                     }
                 }
@@ -632,7 +581,7 @@ fun EditProfileScreen(
 }
 
 /* -------------------------------------------------------------------------- */
-/* TEXT FIELD                                    */
+/*                               TEXT FIELD                                    */
 /* -------------------------------------------------------------------------- */
 @Composable
 fun ProfileTextField(
@@ -645,8 +594,6 @@ fun ProfileTextField(
     isError: Boolean = false,
     supportingText: String? = null
 ) {
-    val Primary = Color(0xFF030303)
-
     Column {
         Text(label, style = MaterialTheme.typography.bodyMedium, color = Color(0xFF6B7280))
         Spacer(Modifier.height(6.dp))
@@ -678,7 +625,7 @@ fun ProfileTextField(
 }
 
 /* -------------------------------------------------------------------------- */
-/* DATE FORMAT                                   */
+/*                               DATE FORMAT                                   */
 /* -------------------------------------------------------------------------- */
 fun formatDate(iso: String?): String {
     if (iso.isNullOrBlank()) return "Unknown"
@@ -692,7 +639,7 @@ fun formatDate(iso: String?): String {
 }
 
 /* -------------------------------------------------------------------------- */
-/* PREVIEW                                       */
+/*                               PREVIEW                                       */
 /* -------------------------------------------------------------------------- */
 @Preview(showBackground = true)
 @Composable

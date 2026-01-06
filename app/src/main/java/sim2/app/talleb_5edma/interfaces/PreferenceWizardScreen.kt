@@ -11,16 +11,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import sim2.app.talleb_5edma.models.*
-import sim2.app.talleb_5edma.network.StudentPreferenceRepository
-import sim2.app.talleb_5edma.util.getToken
 
 private val Accent = Color(0xFFB71C1C)
 private val CardBg = Color(0xFFF7F7F9)
@@ -31,17 +24,9 @@ fun PreferenceWizardScreen(
     onClose: () -> Unit = {},
     onFinished: () -> Unit = {}
 ) {
-    val context = LocalContext.current
-    val repository = remember { StudentPreferenceRepository() }
-    val coroutineScope = rememberCoroutineScope()
-    
-    var isLoading by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var successMessage by remember { mutableStateOf<String?>(null) }
-    
     var currentStep by remember { mutableStateOf(0) } // 0..4
 
-    // État des choix
+    // État des choix (tu pourras les connecter à ton backend plus tard)
     var studyLevel by remember { mutableStateOf<String?>(null) }
     var studyField by remember { mutableStateOf<String?>(null) }
 
@@ -57,194 +42,6 @@ fun PreferenceWizardScreen(
 
     var selectedInterests by remember { mutableStateOf(setOf<String>()) }
     var hasSecondHobby by remember { mutableStateOf(false) }
-    
-    // Fonction pour mapper les valeurs UI vers les enums
-    fun mapStudyLevel(level: String?): StudyLevel? {
-        return when (level?.lowercase()) {
-            "licence 1" -> StudyLevel.LICENCE_1
-            "licence 2" -> StudyLevel.LICENCE_2
-            "licence 3" -> StudyLevel.LICENCE_3
-            "ingénierie" -> StudyLevel.INGENIERIE
-            "mastère" -> StudyLevel.MASTERE
-            "autre" -> StudyLevel.AUTRE
-            else -> null
-        }
-    }
-    
-    fun mapStudyDomain(domain: String?): StudyDomain? {
-        return when (domain?.lowercase()) {
-            "informatique" -> StudyDomain.INFORMATIQUE
-            "infirmier" -> StudyDomain.INFIRMIER
-            "médecine" -> StudyDomain.MEDECINE
-            "mécanique" -> StudyDomain.MECANIQUE
-            "électrique" -> StudyDomain.ELECTRIQUE
-            "autre" -> StudyDomain.AUTRE
-            else -> null
-        }
-    }
-    
-    fun mapLookingFor(looking: String?): LookingFor? {
-        return when (looking?.lowercase()) {
-            "job" -> LookingFor.JOB
-            "stage" -> LookingFor.STAGE
-            "mission freelance", "freelance" -> LookingFor.FREELANCE
-            else -> null
-        }
-    }
-    
-    fun mapMotivation(motivation: String?): MainMotivation? {
-        return when (motivation?.lowercase()) {
-            "argent" -> MainMotivation.ARGENT
-            "expérience", "experience" -> MainMotivation.EXPERIENCE
-            "enrichissement du cv", "enrichissement_cv" -> MainMotivation.ENRICHISSEMENT_CV
-            else -> null
-        }
-    }
-    
-    fun mapSoftSkill(skill: String): SoftSkills? {
-        return when (skill.lowercase()) {
-            "communication" -> SoftSkills.COMMUNICATION
-            "organisation" -> SoftSkills.ORGANISATION
-            "sérieux" -> SoftSkills.SERIEUX
-            "adaptabilité" -> SoftSkills.ADAPTABILITE
-            "travail d'équipe", "travail_équipe" -> SoftSkills.TRAVAIL_EQUIPE
-            "leadership" -> SoftSkills.LEADERSHIP
-            "créativité" -> SoftSkills.CREATIVITE
-            "résolution de problèmes", "résolution_problèmes" -> SoftSkills.RESOLUTION_PROBLEMES
-            "autre" -> SoftSkills.AUTRE
-            else -> null
-        }
-    }
-    
-    fun mapLanguageLevel(level: String?): LanguageLevel? {
-        return when (level?.lowercase()) {
-            "débutant" -> LanguageLevel.DEBUTANT
-            "intermédiaire" -> LanguageLevel.INTERMEDIAIRE
-            "avancé" -> LanguageLevel.AVANCE
-            "courant" -> LanguageLevel.COURANT
-            else -> null
-        }
-    }
-    
-    fun mapHobby(hobby: String): Hobbies? {
-        return when (hobby.lowercase()) {
-            "sport" -> Hobbies.SPORT
-            "jeux vidéo", "jeux_video" -> Hobbies.JEUX_VIDEO
-            "musique" -> Hobbies.MUSIQUE
-            "design" -> Hobbies.DESIGN
-            "lecture" -> Hobbies.LECTURE
-            "voyage" -> Hobbies.VOYAGE
-            "cuisine" -> Hobbies.CUISINE
-            "photographie" -> Hobbies.PHOTOGRAPHIE
-            "autre" -> Hobbies.AUTRE
-            else -> null
-        }
-    }
-    
-    // Fonction pour sauvegarder toutes les préférences
-    fun saveAllPreferences() {
-        coroutineScope.launch {
-            try {
-                isLoading = true
-                errorMessage = null
-                successMessage = null
-                
-                val token = getToken(context)
-                if (token.isEmpty()) {
-                    errorMessage = "Erreur: Vous devez être connecté"
-                    isLoading = false
-                    return@launch
-                }
-                
-                // Validation des champs requis
-                val mappedStudyLevel = mapStudyLevel(studyLevel)
-                val mappedStudyDomain = mapStudyDomain(studyField)
-                val mappedLookingFor = mapLookingFor(searchType)
-                val mappedMotivation = mapMotivation(mainMotivation)
-                val mappedArabic = mapLanguageLevel(arabicLevel)
-                val mappedFrench = mapLanguageLevel(frenchLevel)
-                val mappedEnglish = mapLanguageLevel(englishLevel)
-                
-                if (mappedStudyLevel == null || mappedStudyDomain == null || 
-                    mappedLookingFor == null || mappedMotivation == null ||
-                    mappedArabic == null || mappedFrench == null || mappedEnglish == null) {
-                    errorMessage = "Veuillez remplir tous les champs obligatoires"
-                    isLoading = false
-                    return@launch
-                }
-                
-                if (selectedSoftSkills.size < 1 || selectedSoftSkills.size > maxSoftSkills) {
-                    errorMessage = "Veuillez sélectionner entre 1 et $maxSoftSkills compétences"
-                    isLoading = false
-                    return@launch
-                }
-                
-                if (selectedInterests.isEmpty()) {
-                    errorMessage = "Veuillez sélectionner au moins un centre d'intérêt"
-                    isLoading = false
-                    return@launch
-                }
-                
-                // Mapper les soft skills
-                val mappedSoftSkills = selectedSoftSkills.mapNotNull { mapSoftSkill(it) }
-                if (mappedSoftSkills.size != selectedSoftSkills.size) {
-                    errorMessage = "Erreur lors du mapping des compétences"
-                    isLoading = false
-                    return@launch
-                }
-                
-                // Mapper les hobbies
-                val mappedHobbies = selectedInterests.mapNotNull { mapHobby(it) }
-                if (mappedHobbies.isEmpty()) {
-                    errorMessage = "Erreur lors du mapping des centres d'intérêt"
-                    isLoading = false
-                    return@launch
-                }
-                
-                // Créer la requête
-                val createRequest = CreateStudentPreferenceRequest(
-                    study_level = mappedStudyLevel,
-                    study_domain = mappedStudyDomain,
-                    looking_for = mappedLookingFor,
-                    main_motivation = mappedMotivation,
-                    soft_skills = mappedSoftSkills,
-                    langue_arabe = mappedArabic,
-                    langue_francais = mappedFrench,
-                    langue_anglais = mappedEnglish,
-                    hobbies = mappedHobbies,
-                    has_second_hobby = hasSecondHobby,
-                    current_step = 5,
-                    is_completed = true
-                )
-                
-                // Sauvegarder
-                val result = withContext(Dispatchers.IO) {
-                    repository.createOrCompletePreference(token, createRequest)
-                }
-                
-                withContext(Dispatchers.Main) {
-                    if (result.id != null) {
-                        successMessage = "Préférences enregistrées avec succès!"
-                        // Fermer après 2 secondes
-                        kotlinx.coroutines.CoroutineScope(Dispatchers.Main).launch {
-                            kotlinx.coroutines.delay(2000)
-                            onFinished()
-                        }
-                    } else {
-                        errorMessage = "Erreur lors de l'enregistrement"
-                    }
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    errorMessage = "Erreur: ${e.message}"
-                }
-            } finally {
-                withContext(Dispatchers.Main) {
-                    isLoading = false
-                }
-            }
-        }
-    }
 
     val titles = listOf(
         "Informations académiques",
@@ -263,39 +60,6 @@ fun PreferenceWizardScreen(
                 .background(Color(0xFFF4F4F7))
                 .padding(padding)
         ) {
-            // Messages d'erreur/succès
-            errorMessage?.let { message ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
-                ) {
-                    Text(
-                        text = message,
-                        modifier = Modifier.padding(12.dp),
-                        color = Color(0xFFC62828),
-                        fontSize = 13.sp
-                    )
-                }
-            }
-            
-            successMessage?.let { message ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))
-                ) {
-                    Text(
-                        text = message,
-                        modifier = Modifier.padding(12.dp),
-                        color = Color(0xFF2E7D32),
-                        fontSize = 13.sp
-                    )
-                }
-            }
-            
             // Barre d'étape
             StepHeader(
                 stepIndex = currentStep,
@@ -376,14 +140,13 @@ fun PreferenceWizardScreen(
             BottomNavButtons(
                 stepIndex = currentStep,
                 total = stepsCount,
-                isLoading = isLoading,
                 onPrevious = {
                     if (currentStep == 0) onClose() else currentStep--
                 },
                 onNext = {
                     if (currentStep == stepsCount - 1) {
-                        // Sauvegarder toutes les préférences
-                        saveAllPreferences()
+                        // TODO : envoyer les données au backend
+                        onFinished()
                     } else {
                         currentStep++
                     }
@@ -758,7 +521,6 @@ private fun SelectableChip(
 private fun BottomNavButtons(
     stepIndex: Int,
     total: Int,
-    isLoading: Boolean = false,
     onPrevious: () -> Unit,
     onNext: () -> Unit
 ) {
@@ -793,17 +555,9 @@ private fun BottomNavButtons(
             colors = ButtonDefaults.buttonColors(
                 containerColor = Accent,
                 contentColor = Color.White
-            ),
-            enabled = !isLoading
+            )
         ) {
-            if (isLast && isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    color = Color.White
-                )
-            } else {
-                Text(if (isLast) "Terminer ✓" else "Suivant")
-            }
+            Text(if (isLast) "Terminer ✓" else "Suivant")
         }
     }
 }
