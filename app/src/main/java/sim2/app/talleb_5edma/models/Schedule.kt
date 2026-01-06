@@ -3,7 +3,7 @@ package sim2.app.talleb_5edma.models
 import com.google.gson.annotations.SerializedName
 
 /**
- * Modèle pour un cours extrait du PDF
+ * Modèle pour un cours extrait de l'image
  */
 data class Course(
     @SerializedName("day") val day: String,           // "Monday", "Tuesday", etc.
@@ -15,7 +15,7 @@ data class Course(
 )
 
 /**
- * Réponse du backend après traitement du PDF
+ * Réponse du backend après traitement de l'image
  */
 data class ProcessedScheduleResponse(
     @SerializedName("success") val success: Boolean? = true,

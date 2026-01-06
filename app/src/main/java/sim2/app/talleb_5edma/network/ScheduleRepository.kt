@@ -15,23 +15,30 @@ import sim2.app.talleb_5edma.util.client
 class ScheduleRepository {
 
     /**
-     * Upload un PDF d'emploi du temps et extraire les cours
-     * @param pdfBytes Contenu du fichier PDF en bytes
-     * @param fileName Nom du fichier PDF
+     * Upload une image d'emploi du temps (JPG/PNG) et extraire les cours
+     * @param imageBytes Contenu du fichier image en bytes
+     * @param fileName Nom du fichier image
      * @return Liste des cours extraits
      */
-    suspend fun processPdfSchedule(
-        pdfBytes: ByteArray,
+    suspend fun processImageSchedule(
+        imageBytes: ByteArray,
         fileName: String
     ): ProcessedScheduleResponse {
-        println("CatLog: ScheduleRepository - Processing PDF schedule")
-        println("CatLog: File name: $fileName, Size: ${pdfBytes.size} bytes")
+        println("CatLog: ScheduleRepository - Processing image schedule")
+        println("CatLog: File name: $fileName, Size: ${imageBytes.size} bytes")
+        
+        // Déterminer le type MIME basé sur l'extension du fichier
+        val mimeType = when {
+            fileName.lowercase().endsWith(".jpg") || fileName.lowercase().endsWith(".jpeg") -> "image/jpeg"
+            fileName.lowercase().endsWith(".png") -> "image/png"
+            else -> "image/jpeg" // Par défaut
+        }
         
         val response = client.post("$BASE_URL/schedule/process") {
             setBody(MultiPartFormDataContent(
                 formData {
-                    append("file", pdfBytes, Headers.build {
-                        append(HttpHeaders.ContentType, "application/pdf")
+                    append("file", imageBytes, Headers.build {
+                        append(HttpHeaders.ContentType, mimeType)
                         append(HttpHeaders.ContentDisposition, "filename=\"$fileName\"")
                     })
                 }
@@ -47,7 +54,7 @@ class ScheduleRepository {
                 "Unable to read error body: ${e.message}"
             }
             println("CatLog: Error response: $errorBody")
-            throw Exception("Failed to process PDF: HTTP ${response.status.value} - $errorBody")
+            throw Exception("Failed to process image: HTTP ${response.status.value} - $errorBody")
         }
         
         return try {
@@ -112,27 +119,27 @@ class ScheduleRepository {
     }
 
     /**
-     * Traiter le PDF et créer les événements en une seule opération
+     * Traiter l'image et créer les événements en une seule opération
      * @param token Token d'authentification
-     * @param pdfBytes Contenu du fichier PDF
+     * @param imageBytes Contenu du fichier image
      * @param fileName Nom du fichier
      * @param weekStartDate Date de début de semaine (optionnel)
      * @return Réponse avec les événements créés
      */
     suspend fun processAndCreateEvents(
         token: String,
-        pdfBytes: ByteArray,
+        imageBytes: ByteArray,
         fileName: String,
         weekStartDate: String? = null
     ): CreateEventsResponse {
-        // Étape 1: Traiter le PDF
-        val processedSchedule = processPdfSchedule(pdfBytes, fileName)
+        // Étape 1: Traiter l'image
+        val processedSchedule = processImageSchedule(imageBytes, fileName)
         
         if (processedSchedule.courses.isEmpty()) {
-            throw Exception("Aucun cours trouvé dans le PDF")
+            throw Exception("Aucun cours trouvé dans l'image")
         }
         
-        println("CatLog: Found ${processedSchedule.courses.size} courses in PDF")
+        println("CatLog: Found ${processedSchedule.courses.size} courses in image")
         
         // Étape 2: Créer les événements
         return createEventsFromSchedule(token, processedSchedule.courses, weekStartDate)

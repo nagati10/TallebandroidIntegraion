@@ -1,8 +1,10 @@
 package sim2.app.talleb_5edma.screens
 
+import android.graphics.Bitmap
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,6 +21,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -27,6 +31,7 @@ import androidx.navigation.NavController
 import kotlinx.coroutines.launch
 import sim2.app.talleb_5edma.models.Course
 import sim2.app.talleb_5edma.network.ScheduleRepository
+import sim2.app.talleb_5edma.util.FileUtils
 import sim2.app.talleb_5edma.util.getToken
 import java.text.SimpleDateFormat
 import java.util.*
@@ -52,6 +57,7 @@ fun ScheduleUploadScreen(
     
     var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
     var selectedFileName by remember { mutableStateOf<String?>(null) }
+    var selectedImageBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var extractedCourses by remember { mutableStateOf<List<Course>>(emptyList()) }
     var weekStartDate by remember { mutableStateOf("") }
     
@@ -82,8 +88,8 @@ fun ScheduleUploadScreen(
         weekStartDate = getCurrentWeekStart()
     }
     
-    // Launcher pour sélectionner un fichier PDF
-    val pdfPickerLauncher = rememberLauncherForActivityResult(
+    // Launcher pour sélectionner une image (JPG, PNG uniquement)
+    val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
@@ -98,8 +104,29 @@ fun ScheduleUploadScreen(
                     }
                 }
             }
+            // Vérifier que c'est une image valide
+            val mimeType = context.contentResolver.getType(it)
+            if (mimeType != null && !mimeType.startsWith("image/")) {
+                errorMessage = "Veuillez sélectionner une image (JPG ou PNG)"
+                selectedFileUri = null
+                selectedFileName = null
+                selectedImageBitmap = null
+                return@let
+            }
+            // Générer un nom par défaut si nécessaire
             if (selectedFileName == null) {
-                selectedFileName = "schedule_${System.currentTimeMillis()}.pdf"
+                val extension = when (mimeType) {
+                    "image/jpeg", "image/jpg" -> "jpg"
+                    "image/png" -> "png"
+                    else -> "jpg"
+                }
+                selectedFileName = "schedule_${System.currentTimeMillis()}.$extension"
+            }
+            // Charger l'image pour prévisualisation
+            try {
+                selectedImageBitmap = FileUtils.uriToBitmap(context, it)
+            } catch (e: Exception) {
+                println("CatLog: Error loading image preview: ${e.message}")
             }
             // Réinitialiser les états
             extractedCourses = emptyList()
@@ -109,33 +136,44 @@ fun ScheduleUploadScreen(
         }
     }
     
-    // Fonction pour traiter le PDF
-    fun processPdf() {
+    // Fonction pour traiter l'image
+    fun processImage() {
         val uri = selectedFileUri ?: return
         val fileName = selectedFileName ?: return
         
         scope.launch {
             isProcessing = true
-            processingStep = "Lecture du fichier PDF..."
+            processingStep = "Lecture de l'image..."
             errorMessage = null
             successMessage = null
             
             try {
+                // Vérifier le type MIME
+                val mimeType = context.contentResolver.getType(uri)
+                if (mimeType == null || !mimeType.startsWith("image/")) {
+                    throw Exception("Le fichier sélectionné n'est pas une image valide")
+                }
+                
+                // Vérifier que c'est JPG ou PNG
+                if (mimeType != "image/jpeg" && mimeType != "image/jpg" && mimeType != "image/png") {
+                    throw Exception("Veuillez sélectionner une image au format JPG ou PNG")
+                }
+                
                 // Lire le contenu du fichier
-                val pdfBytes = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                val imageBytes = context.contentResolver.openInputStream(uri)?.use { inputStream ->
                     inputStream.readBytes()
                 }
                 
-                if (pdfBytes == null || pdfBytes.isEmpty()) {
-                    throw Exception("Impossible de lire le fichier PDF")
+                if (imageBytes == null || imageBytes.isEmpty()) {
+                    throw Exception("Impossible de lire l'image")
                 }
                 
-                println("CatLog: PDF size: ${pdfBytes.size} bytes")
+                println("CatLog: Image size: ${imageBytes.size} bytes, MIME: $mimeType")
                 
                 processingStep = "Extraction des cours avec l'IA..."
                 
-                // Traiter le PDF
-                val response = repository.processPdfSchedule(pdfBytes, fileName)
+                // Traiter l'image
+                val response = repository.processImageSchedule(imageBytes, fileName)
                 
                 extractedCourses = response.courses
                 successMessage = "${response.courses.size} cours extraits avec succès"
@@ -146,7 +184,7 @@ fun ScheduleUploadScreen(
                 )
                 
             } catch (e: Exception) {
-                println("CatLog: Error processing PDF: ${e.message}")
+                println("CatLog: Error processing image: ${e.message}")
                 errorMessage = "Erreur: ${e.message}"
                 snackbarHostState.showSnackbar(
                     message = errorMessage!!,
@@ -241,10 +279,14 @@ fun ScheduleUploadScreen(
             // En-tête avec instructions
             InstructionCard()
             
-            // Sélection de fichier
+            // Sélection d'image
             FileSelectionCard(
                 selectedFileName = selectedFileName,
-                onSelectFile = { pdfPickerLauncher.launch("application/pdf") }
+                selectedImageBitmap = selectedImageBitmap,
+                onSelectFile = { 
+                    // Sélectionner une image (JPG ou PNG) - la validation est faite après sélection
+                    imagePickerLauncher.launch("image/*")
+                }
             )
             
             // Date de début de semaine
@@ -255,10 +297,10 @@ fun ScheduleUploadScreen(
                 )
             }
             
-            // Bouton pour traiter le PDF
+            // Bouton pour traiter l'image
             if (selectedFileName != null && extractedCourses.isEmpty()) {
                 Button(
-                    onClick = { processPdf() },
+                    onClick = { processImage() },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),
@@ -283,7 +325,7 @@ fun ScheduleUploadScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(Icons.Default.Search, "Analyser")
-                            Text("Analyser le PDF avec l'IA")
+                            Text("Analyser l'image avec l'IA")
                         }
                     }
                 }
@@ -369,7 +411,7 @@ fun InstructionCard() {
             
             InstructionStep(
                 number = "1",
-                text = "Sélectionnez votre emploi du temps au format PDF"
+                text = "Sélectionnez une photo de votre emploi du temps (JPG ou PNG)"
             )
             InstructionStep(
                 number = "2",
@@ -419,6 +461,7 @@ fun InstructionStep(number: String, text: String) {
 @Composable
 fun FileSelectionCard(
     selectedFileName: String?,
+    selectedImageBitmap: Bitmap?,
     onSelectFile: () -> Unit
 ) {
     Surface(
@@ -437,15 +480,28 @@ fun FileSelectionCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Icon(
-                if (selectedFileName != null) Icons.Default.CheckCircle else Icons.Default.DateRange,
-                contentDescription = null,
-                tint = if (selectedFileName != null) Primary else Soft,
-                modifier = Modifier.size(48.dp)
-            )
+            // Afficher la prévisualisation de l'image si disponible
+            if (selectedImageBitmap != null) {
+                Image(
+                    bitmap = selectedImageBitmap.asImageBitmap(),
+                    contentDescription = "Image sélectionnée",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .background(Color.LightGray.copy(alpha = 0.2f), RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Fit
+                )
+            } else {
+                Icon(
+                    if (selectedFileName != null) Icons.Default.CheckCircle else Icons.Default.Image,
+                    contentDescription = null,
+                    tint = if (selectedFileName != null) Primary else Soft,
+                    modifier = Modifier.size(48.dp)
+                )
+            }
             
             Text(
-                selectedFileName ?: "Sélectionner un fichier PDF",
+                selectedFileName ?: "Sélectionner une image (JPG ou PNG)",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
                 color = if (selectedFileName != null) Primary else Color.Black
@@ -453,7 +509,7 @@ fun FileSelectionCard(
             
             if (selectedFileName == null) {
                 Text(
-                    "Appuyez pour choisir votre emploi du temps",
+                    "Appuyez pour choisir une photo de votre emploi du temps",
                     fontSize = 12.sp,
                     color = Soft
                 )

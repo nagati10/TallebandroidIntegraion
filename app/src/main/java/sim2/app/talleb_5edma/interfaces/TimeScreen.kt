@@ -8,7 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -160,7 +160,7 @@ fun TimeScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        // 🔹 Bouton "Importer emploi du temps PDF"
+        // 🔹 Bouton "Importer emploi du temps (Image)"
         Button(
             onClick = onOpenScheduleUpload,
             modifier = Modifier
@@ -175,11 +175,11 @@ fun TimeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    Icons.Default.DateRange,
+                    Icons.Default.Image,
                     contentDescription = null,
                     tint = Color.White
                 )
-                Text("Importer emploi du temps PDF", color = Color.White, fontWeight = FontWeight.Medium)
+                Text("Importer emploi du temps (Image)", color = Color.White, fontWeight = FontWeight.Medium)
             }
         }
 
