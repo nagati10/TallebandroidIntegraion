@@ -113,7 +113,6 @@ private val OrganizationTheme = AppTheme(
     chip = Color(0x66FFFFFF), // Chip en verre légèrement blanc (Capture)
     cardBorder = Color(0xFFE6DEFF) // Bordure d'accentuation (Capture)
 )
-
 private val CasualTheme = AppTheme(
     primary = Color(0xF3F8F6FA), // Green 0xF3765E88
     primaryDark = Color(0xFFF6F3F3), // Dark Green
@@ -123,7 +122,6 @@ private val CasualTheme = AppTheme(
     chip = Color(0xFFF6F2F6), // Glass chip
     cardBorder = Color(0xFFEEE8EF) // Light Green border
 )
-
 private val ProfessionalTheme = AppTheme(
     primary = Color(0xFF57A2DE), // Blue
     primaryDark = Color(0xFF3B73AB), // Dark Blue
@@ -170,21 +168,16 @@ class AccueilState(
     var loading by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
     var currentUser by mutableStateOf<User?>(null)
-
     var onlyPopular by mutableStateOf(false)
     var onlyFavorites by mutableStateOf(false)
-
     var selectedType: JobType? by mutableStateOf(null)
     var selectedCity: String? by mutableStateOf(null)
-
     // Improved refresh trigger with throttle logic
     var refreshTrigger by mutableIntStateOf(0)
     private var lastRefreshTime by mutableLongStateOf(0L)
     private val refreshCooldown = 1000L // 1 second cooldown between refreshes
-
     val allCities: List<String>
         get() = list.mapNotNull { it.location?.city }.distinct()
-
     val filtered: List<Offre>
         get() = list
             .filter {
@@ -202,7 +195,6 @@ class AccueilState(
                     currentUser?.likedOffres?.contains(it.id) == true
                 } else true
             }
-
     // Smart refresh function that respects cooldown
     private fun safeRefresh() {
         val currentTime = System.currentTimeMillis()
@@ -214,7 +206,6 @@ class AccueilState(
             println("AccueilState - Refresh skipped (cooldown active, ${currentTime - lastRefreshTime}ms since last refresh)")
         }
     }
-
     // Helper function to check if an offer is liked by current user
     fun isOfferLiked(offerId: String?): Boolean {
         return if (offerId != null && currentUser?.likedOffres != null) {
@@ -223,7 +214,6 @@ class AccueilState(
             false
         }
     }
-
     // Load current user data
     fun loadCurrentUser(token: String) {
         coroutineScope.launch {
@@ -248,7 +238,6 @@ class AccueilState(
                     likedOffres = null
                 )
                 println("AccueilState - Loaded current user: ${currentUser?.nom}, isOrganization: ${currentUser?.isOrganization}")
-
                 // Load liked offers separately
                 loadUserLikedOffres(token)
             } catch (e: Exception) {
@@ -257,7 +246,6 @@ class AccueilState(
             }
         }
     }
-
     // Load user's liked offers separately
     private fun loadUserLikedOffres(token: String) {
         coroutineScope.launch {
@@ -266,7 +254,6 @@ class AccueilState(
                 val likedResponse = userRepository.getLikedOffres(token)
                 currentUser = currentUser?.copy(likedOffres = likedResponse.likedOffres)
                 println("AccueilState - Loaded user liked offers: ${likedResponse.likedOffres?.size}")
-
                 // Force UI refresh after loading liked offers
                 safeRefresh()
             } catch (e: Exception) {
@@ -275,7 +262,6 @@ class AccueilState(
             }
         }
     }
-
     fun loadOffres() {
         println("AccueilState - loadOffres called")
         loading = true
@@ -285,7 +271,6 @@ class AccueilState(
                 println("AccueilState - Fetching offers from repository...")
                 list = offreRepository.getAllActiveOffers()
                 println("AccueilState - Successfully loaded ${list.size} offers")
-
                 // Use safe refresh instead of direct increment
                 safeRefresh()
             } catch (e: Exception) {
@@ -299,12 +284,10 @@ class AccueilState(
             }
         }
     }
-
     fun refreshOffres() {
         println("AccueilState - refreshOffres called")
         loadOffres()
     }
-
     fun toggleLike(token: String, offreId: String) {
         println("AccueilState - toggleLike called with offreId: $offreId")
         coroutineScope.launch {
@@ -321,7 +304,6 @@ class AccueilState(
                             offer
                         }
                     }
-
                     // Update current user's likedOffres
                     currentUser = if (response.liked) {
                         // Add to likedOffres
@@ -332,11 +314,9 @@ class AccueilState(
                         val newLikedOffres = currentUser?.likedOffres?.filter { it != offreId } ?: emptyList()
                         currentUser?.copy(likedOffres = newLikedOffres)
                     }
-
                     println("AccueilState - Like toggled successfully: ${response.liked}")
                     println("AccueilState - Updated likedOffres: ${currentUser?.likedOffres}")
                     println("AccueilState - Updated like count for offer $offreId: ${response.likeCount}")
-
                     // Use safe refresh instead of direct increment
                     safeRefresh()
                 }
@@ -347,7 +327,6 @@ class AccueilState(
             }
         }
     }
-
     fun searchOffres(query: String) {
         println("AccueilState - searchOffres called with query: '$query'")
         if (query.isBlank()) {
@@ -355,7 +334,6 @@ class AccueilState(
             loadOffres()
             return
         }
-
         loading = true
         error = null
         coroutineScope.launch {
@@ -363,7 +341,6 @@ class AccueilState(
                 println("AccueilState - Searching offers with query: '$query'")
                 list = offreRepository.searchOffers(query)
                 println("AccueilState - Search completed, found ${list.size} offers")
-
                 // Use safe refresh instead of direct increment
                 safeRefresh()
             } catch (e: Exception) {
@@ -377,7 +354,6 @@ class AccueilState(
             }
         }
     }
-
     fun clearFilters() {
         println("AccueilState - clearFilters called")
         selectedType = null
@@ -387,7 +363,6 @@ class AccueilState(
         query = ""
         loadOffres()
     }
-
     // New method to load user's liked offers
     fun loadLikedOffres(token: String) {
         println("AccueilState - loadLikedOffres called")
@@ -397,7 +372,6 @@ class AccueilState(
             try {
                 list = offreRepository.getLikedOffers(token)
                 println("AccueilState - Successfully loaded ${list.size} liked offers")
-
                 // Use safe refresh instead of direct increment
                 safeRefresh()
             } catch (e: Exception) {
@@ -409,7 +383,6 @@ class AccueilState(
             }
         }
     }
-
     // New method to load user's own offers
     fun loadMyOffres(token: String) {
         println("AccueilState - loadMyOffres called")
@@ -419,7 +392,6 @@ class AccueilState(
             try {
                 list = offreRepository.getMyOffers(token)
                 println("AccueilState - Successfully loaded ${list.size} user offers")
-
                 // Use safe refresh instead of direct increment
                 safeRefresh()
             } catch (e: Exception) {
@@ -431,19 +403,16 @@ class AccueilState(
             }
         }
     }
-
     // Helper method to refresh user data
     fun refreshUserData(token: String) {
         coroutineScope.launch {
             loadCurrentUser(token)
         }
     }
-
     // Force UI refresh with throttle
     fun forceRefresh() {
         safeRefresh()
     }
-
     // Add this method to your AccueilState class in Accueil.kt
     fun deleteOffre(token: String, offreId: String) {
         println("AccueilState - deleteOffre called with offreId: $offreId")
@@ -451,10 +420,8 @@ class AccueilState(
             try {
                 val response = offreRepository.deleteOffre(token, offreId)
                 println("AccueilState - Delete response: ${response.message}")
-
                 // Remove the deleted offer from the local list
                 list = list.filter { it.id != offreId }
-
                 println("AccueilState - Offer deleted successfully")
             } catch (e: Exception) {
                 error = "Erreur de suppression: ${e.message}"
@@ -481,7 +448,6 @@ fun AccueilScreen(
     onOpenFilter: () -> Unit = {},
     onShareOffer: (Offre) -> Unit = {}
 ) {
-
     val coroutineScope = rememberCoroutineScope()
     val state = rememberAccueilState(coroutineScope = coroutineScope)
     val offerTypeState = rememberOfferTypeState()
@@ -495,7 +461,6 @@ fun AccueilScreen(
     LaunchedEffect(offerTypeState.isProfessional) {
         onProfessionalModeChange(offerTypeState.isProfessional)
     }
-
     val screenType = if (state.currentUser?.isOrganization == true) "my" else "all"
     // Load current user if token is available
     println("CatLog: AccueilScreen - Composed with token: ${token?.take(10)}..., screenType: $screenType")
@@ -505,7 +470,6 @@ fun AccueilScreen(
             state.loadCurrentUser(it)
         }
     }
-
     // REDIRECTION : Si l'utilisateur est une organisation, on le redirige vers l'accueil entreprise
     LaunchedEffect(state.currentUser) {
         if (state.currentUser?.isOrganization == true) {
@@ -516,7 +480,6 @@ fun AccueilScreen(
             }
         }
     }
-
     // Update theme based on offer type
     LaunchedEffect(offerTypeState.isProfessional, state.currentUser?.isOrganization) {
         val newTheme = when {
@@ -527,7 +490,6 @@ fun AccueilScreen(
         offerTypeState.themeState.currentTheme = newTheme
         println("CatLog: AccueilScreen - Theme updated: ${newTheme.accent}")
     }
-
     // Load offers based on screen type
     LaunchedEffect(screenType, token, state.refreshTrigger) {
         println("CatLog: AccueilScreen - LaunchedEffect triggered with screenType: $screenType, refreshTrigger: ${state.refreshTrigger}")
@@ -549,7 +511,6 @@ fun AccueilScreen(
             else -> state.loadOffres()
         }
     }
-
     AccueilContent(
         navController = navController,
         token = token,
@@ -578,7 +539,6 @@ fun AccueilContent(
 ) {
     val context = LocalContext.current
     val theme = offerTypeState.themeState.currentTheme
-
     // ====== Filtre logique selon Occasionnel / Professionnel ======
     val displayedOffers: List<Offre> =
         if (screenType == "all" && state.currentUser?.isOrganization == false) {
@@ -595,11 +555,9 @@ fun AccueilContent(
             // Pour les organisations ou autres écrans on garde le filtre normal
             state.filtered
         }
-
     println("CatLog: AccueilContent - Composed, screenType: $screenType, loading: ${state.loading}, error: ${state.error}, offers count: ${state.list.size}, filtered: ${state.filtered.size}, displayed: ${displayedOffers.size}")
     println("CatLog: AccueilContent - Current user: ${state.currentUser?.nom}, isOrganization: ${state.currentUser?.isOrganization}")
     println("CatLog: AccueilContent - Current theme accent: ${theme.accent}")
-
     Box(
         Modifier
             .fillMaxSize()
@@ -618,7 +576,6 @@ fun AccueilContent(
             contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-
             /* ====== Screen Title ====== */
             item {
                 when (screenType) {
@@ -633,11 +590,6 @@ fun AccueilContent(
                    // else -> ScreenTitle("les offres", theme)
                 }
             }
-
-
-
-
-
             /* ====== Search Bar ====== */
             if (screenType == "all") {
                 item {
@@ -661,7 +613,6 @@ fun AccueilContent(
                     )
                 }
             }
-
             /* ====== Loading State ====== */
             if (state.loading && state.list.isEmpty()) {
                 item {
@@ -669,7 +620,6 @@ fun AccueilContent(
                     LoadingIndicator(theme)
                 }
             }
-
             /* ====== Error State ====== */
             state.error?.let { errorMessage ->
                 item {
@@ -688,7 +638,6 @@ fun AccueilContent(
                     )
                 }
             }
-
             /* ====== Filters Row ====== */
             if (screenType == "all") {
                 item {
@@ -700,7 +649,6 @@ fun AccueilContent(
                     )
                 }
             }
-
             /* ====== New Opportunities Banner ====== */
             if (screenType == "all") {
                 item {
@@ -715,7 +663,6 @@ fun AccueilContent(
                     )
                 }
             }
-
             /* ====== Offer Type Switch for Regular Users (centered under title) ====== */
             if (screenType == "all") {
                 item {
@@ -731,19 +678,15 @@ fun AccueilContent(
                     }
                 }
             }
-
             /* ====== Offers List ====== */
             if (displayedOffers.isNotEmpty()) {
                 println("CatLog: AccueilContent - Rendering ${displayedOffers.size} offers")
                 items(displayedOffers, key = { it.id ?: "" }) { offer ->
                     println("CatLog: AccueilContent - Rendering JobCard for: ${offer.title}")
-
                     // Check if offer is liked by current user using the state method
                     val isLiked = state.isOfferLiked(offer.id)
                     val likeCount = offer.likeCount ?: 0
-
                     println("CatLog: AccueilContent - Offer ${offer.id}: isLiked=$isLiked, likeCount=$likeCount")
-
                     JobCard(
                         offer = offer,
                         isLiked = isLiked,
@@ -806,7 +749,6 @@ fun AccueilContent(
                 }
             }
         }
-
         /* ====== Pull to Refresh Indicator ====== */
         if (state.loading && state.list.isNotEmpty()) {
             println("CatLog: AccueilContent - Showing refresh indicator")
@@ -844,7 +786,6 @@ private fun OfferTypeSwitch(
             color = TitleText,
             modifier = Modifier.padding(bottom = 8.dp)
         )
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -900,8 +841,6 @@ private fun OfferTypeSwitch(
         }
     }
 }
-
-
 
 /* ====== Screen Title ====== */
 @Composable
@@ -1061,7 +1000,6 @@ private fun FiltersAndChipsRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             // Dropdown Type
             DropdownFilter(
                 label = "Tous les types",
@@ -1085,7 +1023,6 @@ private fun FiltersAndChipsRow(
                 },
                 theme = theme
             )
-
             // Dropdown Ville
             val cityItems = listOf("Toutes les villes") + state.allCities
             println("CatLog: FiltersAndChipsRow - Available cities: $cityItems")
@@ -1100,25 +1037,21 @@ private fun FiltersAndChipsRow(
                 },
                 theme = theme
             )
-
             // Chip Filtre (ouvre page filtre)
             GlassChip("Filtre", Icons.Filled.FilterList, theme) {
                 println("CatLog: FiltersAndChipsRow - Filter chip clicked")
                 onOpenFilter()
             }
-
             // Chip Populaire
             ToggleGlassChip("Populaire", state.onlyPopular, theme) { newValue ->
                 println("CatLog: FiltersAndChipsRow - Popular filter changed to: $newValue")
                 state.onlyPopular = newValue
             }
-
             // Chip Favorites
             ToggleGlassChip("Favorites", state.onlyFavorites, theme) { newValue ->
                 println("CatLog: FiltersAndChipsRow - Favorites filter changed to: $newValue")
                 state.onlyFavorites = newValue
             }
-
             // Clear filters
             if (state.selectedType != null || state.selectedCity != null || state.onlyPopular || state.onlyFavorites) {
                 GlassChip("Effacer", Icons.Filled.Clear, theme) {
@@ -1195,7 +1128,6 @@ private fun EmptyState(
         "my" -> "Aucune offre publiée" to "Créez votre première offre pour commencer"
         else -> "Aucune offre trouvée" to "Essayez de modifier vos filtres ou d'actualiser la liste"
     }
-
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = Color.White,
@@ -1274,7 +1206,6 @@ private fun JobCard(
     theme: AppTheme
 ) {
     println("CatLog: JobCard - Composed for offer: ${offer.title}, isLiked: $isLiked, likeCount: $likeCount, offerId: ${offer.id}, screenType: $screenType")
-
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -1294,7 +1225,6 @@ private fun JobCard(
                     .height(4.dp)
                     .background(theme.accent)
             )
-
             Column(Modifier.padding(16.dp)) {
                 // Title and Type
                 Row(
@@ -1310,16 +1240,12 @@ private fun JobCard(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
-
                     Spacer(Modifier.width(8.dp))
-
                     offer.jobType?.let { jobType ->
                         JobTypeBadge(jobType, theme)
                     }
                 }
-
                 Spacer(Modifier.height(6.dp))
-
                 // Company
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     CompanyAvatar(offer.company ?: "Company")
@@ -1333,9 +1259,7 @@ private fun JobCard(
                         modifier = Modifier.weight(1f)
                     )
                 }
-
                 Spacer(Modifier.height(8.dp))
-
                 // Location and Salary
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
@@ -1350,9 +1274,7 @@ private fun JobCard(
                         color = Color.Gray,
                         modifier = Modifier.weight(1f)
                     )
-
                     Spacer(Modifier.width(12.dp))
-
                     Icon(
                         Icons.Filled.Bolt,
                         contentDescription = null,
@@ -1368,9 +1290,7 @@ private fun JobCard(
                         modifier = Modifier.weight(1f)
                     )
                 }
-
                 Spacer(Modifier.height(8.dp))
-
                 // Description
                 Text(
                     offer.description ?: "Description non disponible",
@@ -1379,15 +1299,12 @@ private fun JobCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-
                 // Tags
                 offer.tags?.takeIf { it.isNotEmpty() }?.let { tags ->
                     Spacer(Modifier.height(8.dp))
                     TagsRow(tags = tags, theme = theme)
                 }
-
                 Spacer(Modifier.height(10.dp))
-
                 // Footer with date and actions
                 Row(
                     Modifier.fillMaxWidth(),
@@ -1407,7 +1324,6 @@ private fun JobCard(
                             fontSize = 12.sp,
                             color = Color.Gray
                         )
-
                         offer.viewCount?.takeIf { it > 0 }?.let { views ->
                             Spacer(Modifier.width(12.dp))
                             Icon(
@@ -1424,9 +1340,7 @@ private fun JobCard(
                             )
                         }
                     }
-
                     Spacer(Modifier.weight(1f))
-
                     // Conditionally show Delete/Update or Like/Share buttons based on screenType
                     if (screenType == "my") {
                         // Delete and Update buttons for "my" screen type
@@ -1446,9 +1360,7 @@ private fun JobCard(
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
-
                             Spacer(Modifier.width(4.dp))
-
                             // Delete button
                             IconButton(
                                 onClick = {
@@ -1504,9 +1416,7 @@ private fun JobCard(
                                     }
                                 }
                             }
-
                             Spacer(Modifier.width(4.dp))
-
                             // Share button
                             IconButton(
                                 onClick = {
@@ -1536,7 +1446,6 @@ private fun TagsRow(tags: List<String>, theme: AppTheme) {
     println("CatLog: TagsRow - Composed with tags: $tags")
     val visibleTags = tags.take(3)
     val remainingCount = tags.size - 3
-
     Row(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -1555,7 +1464,6 @@ private fun TagsRow(tags: List<String>, theme: AppTheme) {
                 )
             }
         }
-
         if (remainingCount > 0) {
             Surface(
                 shape = RoundedCornerShape(6.dp),
@@ -1581,7 +1489,6 @@ private fun JobTypeBadge(type: JobType, theme: AppTheme) {
         JobType.STAGE -> "Stage" to Color(0xFF2962FF)
         JobType.FREELANCE -> "Freelance" to Color(0xFFFFA000)
     }
-
     Surface(
         shape = RoundedCornerShape(999.dp),
         color = color.copy(alpha = 0.12f),
@@ -1613,7 +1520,6 @@ private fun CompanyAvatar(seedText: String) {
         .take(2)
         .joinToString("") { it.first().uppercase() }
         .take(2)
-
     Box(
         Modifier
             .size(32.dp)
@@ -1641,7 +1547,6 @@ private fun DropdownFilter(
 ) {
     var expanded by remember { mutableStateOf(false) }
     println("CatLog: DropdownFilter - Composed with current: '$current', items: $items")
-
     Box {
         Surface(
             modifier = Modifier
@@ -1676,7 +1581,6 @@ private fun DropdownFilter(
                 )
             }
         }
-
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = {
@@ -1735,11 +1639,7 @@ private fun GlassChip(text: String, icon: ImageVector? = null, theme: AppTheme, 
 private fun ToggleGlassChip(text: String, checked: Boolean, theme: AppTheme, onChange: (Boolean) -> Unit) {
     println("CatLog: ToggleGlassChip - Composed: $text, checked: $checked")
     Surface(
-        onClick = {
-            val newValue = !checked
-            println("CatLog: ToggleGlassChip - Clicked: $text, changing from $checked to $newValue")
-            onChange(newValue)
-        },
+        onClick = { onChange(!checked) },
         shape = RoundedCornerShape(24.dp),
         color = if (checked) Color(0xFFEDE4FF) else theme.chip,
         border = BorderStroke(1.dp, if (checked) theme.primary else theme.cardBorder)
@@ -1776,7 +1676,6 @@ private fun ToggleGlassChip(text: String, checked: Boolean, theme: AppTheme, onC
 /* ====== Utility Functions ====== */
 private fun formatDate(dateString: String?): String {
     if (dateString.isNullOrEmpty()) return "Date inconnue"
-
     return try {
         val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
         val outputFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())

@@ -116,6 +116,9 @@ import sim2.app.talleb_5edma.screens.ScreenCreateOffreCasual
 import sim2.app.talleb_5edma.screens.ScreenCreateOffrePro
 import sim2.app.talleb_5edma.screens.ScreenOffre
 import sim2.app.talleb_5edma.screens.ScreenUpdateOffre
+import sim2.app.talleb_5edma.screens.RoutineAnalysisScreen
+import sim2.app.talleb_5edma.screens.ScheduleUploadScreen
+import sim2.app.talleb_5edma.screens.MatchingScreen
 import sim2.app.talleb_5edma.screens.SignUpScreen
 import sim2.app.talleb_5edma.ui.theme.Talleb_5edmaTheme
 import sim2.app.talleb_5edma.util.forceClearAllData
@@ -123,13 +126,11 @@ import sim2.app.talleb_5edma.util.getToken
 
 /* ====== Palette ====== */
 private val PurplePrimary = Color(0xFF7C4DFF) // Violet Principal
-private val PurpleDark = Color(0xFF5E35B1)    // Pourpre Foncé
-
-
+private val PurpleDark = Color(0xFF5E35B1) // Pourpre Foncé
 private val TopBarGradient = Brush.horizontalGradient(
     0f to Color(0xFFFFFFFF), // Dark deep purple
     0.5f to Color(0xFFFFFFFF), // Purple
-    1f to Color(0xFFFFFFFF)  // Lighter purple/pinkish
+    1f to Color(0xFFFFFFFF) // Lighter purple/pinkish
 )
 
 /* ====== Routes secondaires ====== */
@@ -165,16 +166,11 @@ fun Main() {
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-
     // Get current back stack entry for navigation state
     val backStack by navController.currentBackStackEntryAsState()
-    val currentRoute = backStack?.destination?.route?.split("/")?.first() ?: Routes.Screen1
-
-    // FIX: Use reactive state for token and user
+    val currentRoute = backStack?.destination?.route?.split("/")?.first() ?: Routes.Screen1 // FIX: Use reactive state for token and user
     var currentToken by remember { mutableStateOf(getToken(context)) }
     var currentUser by remember { mutableStateOf<User?>(null) }
-
-
     // Add WebSocketCallManager for call functionality with HARDCODED USER
     val callManager = remember {
         WebSocketCallManager(context).apply {
@@ -182,14 +178,11 @@ fun Main() {
             initializeSocket()
         }
     }
-
     // Add InterviewWebSocketManager for real-time interview invitations
     val interviewWsManager = remember { InterviewWebSocketManager(context) }
-
     // Add call state observation
     val callState by callManager.callState.collectAsState()
     val callData by callManager.callData.collectAsState()
-
     // Determine if we should show the bottom bar and top bar
     val authRoutes = setOf(
         Routes.Screen1,
@@ -210,32 +203,23 @@ fun Main() {
         Routes.Splash,
         Routes.ScreenHomeEntreprise,
     )
-
     val showBottomBar = currentRoute !in authRoutes && currentToken.isNotEmpty()
     val showTopBar = currentRoute !in authRoutes && currentToken.isNotEmpty()
     val showBack = currentRoute in setOf(
-        "filter", "qr", "map", "calendar",
-        AVAILABILITY_ROUTE,
-        EXAM_MODE_ROUTE,
-        PREF_ROUTE
+        "filter", "qr", "map", "calendar", AVAILABILITY_ROUTE, EXAM_MODE_ROUTE, PREF_ROUTE
     ) && currentToken.isNotEmpty()
-
     // FIX: Update token state when context changes
     LaunchedEffect(context) {
         currentToken = getToken(context)
         println("CatLog: MainActivity - Initial token: '${currentToken.take(10)}...' (${currentToken.length} chars)")
     }
-
-
     var userId by remember { mutableStateOf<String?>(null) }
-
     // Cleanup WebSocket on dispose
     DisposableEffect(Unit) {
         onDispose {
             interviewWsManager.disconnect()
         }
     }
-
     LaunchedEffect(Unit) {
         // Check for token changes periodically
         while (true) {
@@ -248,35 +232,27 @@ fun Main() {
             }
         }
     }
-
     val startingRoute = if (currentToken.isNotEmpty()) BottomDest.Home.route else Routes.Screen1
-
     // FIX: Load user data when token changes
     LaunchedEffect(currentToken) {
         println("CatLog: MainActivity - Token effect - Token: '${currentToken.take(10)}...' (${currentToken.length} chars)")
-
         if (currentToken.isNotEmpty()) {
             try {
                 val repository = UserRepository()
                 println("CatLog: MainActivity - Fetching user with token: '${currentToken.take(10)}...'")
                 val response = repository.getCurrentUser(currentToken)
-
                 println("CatLog: MainActivity - User fetch response - success: ${response.success}, user: ${response.nom}")
-
                 if (response.success == true && response._id != null) {
                     currentUser = response.data
                     userId = response._id
                     callManager.setUserInfo(response._id, response.nom)
-                    
                     println("CatLog: MainActivity - User data loaded: ${response.data?.email}")
-                    
                     // Connect to interview WebSocket when user is available
                     println("🔌 Connecting InterviewWebSocketManager for user: ${response._id}")
                     interviewWsManager.connect(response._id)
                 } else {
                     println("CatLog: MainActivity - Failed to load user data: ${response.message}")
                     currentUser = null
-
                     if (response.status == 401 || response.status == 403) {
                         println("CatLog: MainActivity - Token is invalid, clearing data")
                         forceClearAllData(context)
@@ -299,16 +275,11 @@ fun Main() {
             currentUser = null
         }
     }
-
-
     var permissionsGranted by remember { mutableStateOf(false) }
     // State to track offer type selection (false = Occasionnel, true = Professionnel)
     var isProfessionalMode by remember { mutableStateOf(false) }
-    
     if (!permissionsGranted) {
-        NativePermissionHandler {
-            permissionsGranted = true
-        }
+        NativePermissionHandler { permissionsGranted = true }
         return
     }
     Scaffold(
@@ -392,60 +363,40 @@ fun Main() {
             bottom = innerPadding.calculateBottomPadding(),
             top = innerPadding.calculateTopPadding()
         )
-
         Box(modifier = Modifier.fillMaxSize()) {
             NavHost(
                 navController = navController,
                 startDestination = Routes.Splash,
                 modifier = modifier
-            )
-            {
+            ) {
                 composable(Routes.Splash) {
-
                     SplashScreen(
                         navController = navController,
-                        startDestination =startingRoute ,
+                        startDestination = startingRoute,
                     )
                 }
-
                 // Removed duplicate Time and Calendar routes
-
-
                 // Evenements
-                composable(Routes.ScreenEvenements) {
-                    EvenementsScreen(navController, getToken(context))
-                }
-                composable(Routes.ScreenEvenementCreate) {
-                    EvenementFormScreen(navController, token = getToken(context))
-                }
+                composable(Routes.ScreenEvenements) { EvenementsScreen(navController, getToken(context)) }
+                composable(Routes.ScreenEvenementCreate) { EvenementFormScreen(navController, token = getToken(context)) }
                 composable(Routes.ScreenEvenementEdit + "/{id}") {
                     val id = it.arguments?.getString("id")
                     EvenementFormScreen(navController, eventId = id, token = getToken(context))
                 }
-
                 // Disponibilites
-                composable(Routes.ScreenDisponibilites) {
-                    DisponibilitesScreen(navController, getToken(context))
-                }
+                composable(Routes.ScreenDisponibilites) { DisponibilitesScreen(navController, getToken(context)) }
                 composable(Routes.ScreenDisponibiliteCreate + "/{jour}") { backStackEntry ->
                     val jour = backStackEntry.arguments?.getString("jour")
                     DisponibiliteFormScreen(navController, token = getToken(context), jourParam = jour)
                 }
-                composable(Routes.ScreenDisponibiliteCreate) {
-                    DisponibiliteFormScreen(navController, token = getToken(context))
-                }
+                composable(Routes.ScreenDisponibiliteCreate) { DisponibiliteFormScreen(navController, token = getToken(context)) }
                 composable(Routes.ScreenDisponibiliteEdit + "/{id}") {
                     val id = it.arguments?.getString("id")
                     DisponibiliteFormScreen(navController, disponibiliteId = id, token = getToken(context))
                 }
-
                 // Authentication routes
-                composable(Routes.Screen1) {
-                    LoginScreen(navController, modifier, snackBarHostState)
-                }
-                composable(Routes.Screen2) {
-                    SignUpScreen(navController, modifier)
-                }
+                composable(Routes.Screen1) { LoginScreen(navController, modifier, snackBarHostState) }
+                composable(Routes.Screen2) { SignUpScreen(navController, modifier) }
                 composable(Routes.ScreenOffre+"/{offerId}") { backStackEntry ->
                     val offerId = backStackEntry.arguments?.getString("offerId")
                     ScreenOffre(
@@ -454,19 +405,14 @@ fun Main() {
                         token = currentToken
                     )
                 }
-                composable(Routes.ScreenForgot) {
-                    ForgotPasswordScreen(navController, modifier, snackBarHostState)
-                }
+                composable(Routes.ScreenForgot) { ForgotPasswordScreen(navController, modifier, snackBarHostState) }
                 composable(Routes.ScreenOTP + "/{Code}") {
                     val code = it.arguments?.getString("Code")
                     OTPValidationScreen(navController, modifier, code ?: "", snackBarHostState)
                 }
-                composable(Routes.ScreenResetP) {
-                    ResetPasswordScreen(navController, modifier, snackBarHostState)
-                }
+                composable(Routes.ScreenResetP) { ResetPasswordScreen(navController, modifier, snackBarHostState) }
                 composable(Routes.ScreenEditProfile) {
                     println("CatLog: MainActivity - Navigating to EditProfile - User: ${currentUser != null}, Token: '${currentToken.take(10)}...' (${currentToken.length} chars)")
-
                     EditProfileScreen(
                         navController = navController,
                         user = currentUser,
@@ -483,7 +429,6 @@ fun Main() {
                         }
                     )
                 }
-
                 // Create Offre routes
                 composable(Routes.ScreenCreateOffre) {
                     ScreenCreateOffre(
@@ -515,11 +460,9 @@ fun Main() {
                         token = getToken(context)
                     )
                 }
-
                 // Main app routes
                 composable(BottomDest.Home.route) {
                     println("CatLog: Token!"+getToken(context))
-
                     AccueilScreen(
                         navController,
                         token = getToken(context),
@@ -529,7 +472,6 @@ fun Main() {
                         }
                     )
                 }
-
                 // Route pour l'accueil entreprise
                 composable(Routes.ScreenHomeEntreprise) {
                     EntrepriseHomeScreen(
@@ -537,16 +479,15 @@ fun Main() {
                         token = getToken(context)
                     )
                 }
-
-                composable(BottomDest.Fav.route)  {
-                    PlaceholderScreen("Vos favoris")
-                }
+                composable(BottomDest.Fav.route) { PlaceholderScreen("Vos favoris") }
                 composable(BottomDest.Time.route) {
                     TimeScreen(
                         userName = currentUser?.nom ?: "User",
                         onOpenCalendar = { navController.navigate("calendar") },
-                        onOpenAvailability = { navController.navigate(AVAILABILITY_ROUTE) }
-
+                        onOpenAvailability = { navController.navigate(AVAILABILITY_ROUTE) },
+                        onOpenRoutineAnalysis = { navController.navigate(Routes.ScreenRoutineAnalysis) },
+                        onOpenScheduleUpload = { navController.navigate(Routes.ScreenScheduleImport) },
+                        onOpenAiMatching = { navController.navigate(Routes.ScreenAiMatching) }
                     )
                 }
                 composable(BottomDest.More.route) {
@@ -555,12 +496,11 @@ fun Main() {
                         onOpenMap = { navController.navigate("map") }
                     )
                 }
-
                 // Secondary routes
                 composable("filter") {
                     FilterScreen(
-                        onOpenQr   = { navController.navigate("qr") },
-                        onOpenMap  = { navController.navigate("map") },
+                        onOpenQr = { navController.navigate("qr") },
+                        onOpenMap = { navController.navigate("map") },
                         onOpenAiCv = { /* navController.navigate("ai_cv") */ }
                     )
                 }
@@ -576,18 +516,13 @@ fun Main() {
                         onBack = { navController.popBackStack() }
                     )
                 }
-                composable(Routes.LocationPicker) {
-                    LocationPickerMapScreen(navController = navController)
-                }
+                composable(Routes.LocationPicker) { LocationPickerMapScreen(navController = navController) }
                 composable("calendar") {
                     CalendarScreen(
                         onBack = { navController.popBackStack() },
-                        onManageAvailability = {
-                            navController.navigate(AVAILABILITY_ROUTE)
-                        }
+                        onManageAvailability = { navController.navigate(AVAILABILITY_ROUTE) }
                     )
                 }
-
                 // Disponibilités
                 composable(AVAILABILITY_ROUTE) {
                     AvailabilityScreen(
@@ -595,12 +530,8 @@ fun Main() {
                         onOpenExamMode = { navController.navigate(EXAM_MODE_ROUTE) }
                     )
                 }
-
                 // Mode examens
-                composable(EXAM_MODE_ROUTE) {
-                    ExamModeScreen()
-                }
-
+                composable(EXAM_MODE_ROUTE) { ExamModeScreen() }
                 // Préférences (wizard 5 étapes)
                 composable(PREF_ROUTE) {
                     PreferenceWizardScreen(
@@ -608,16 +539,9 @@ fun Main() {
                         onFinished = { navController.popBackStack() }
                     )
                 }
-
                 // Additional routes
-                composable(Routes.OfferComparisonScreen) {
-                    OfferComparisonScreen(navController)
-                }
-
-                composable(Routes.TesT) {
-                    ChatTestScreen()
-                }
-
+                composable(Routes.OfferComparisonScreen) { OfferComparisonScreen(navController) }
+                composable(Routes.TesT) { ChatTestScreen() }
                 composable(Routes.ScreenChating + "/{chatId}") { backStackEntry ->
                     val chatId = backStackEntry.arguments?.getString("chatId") ?: ""
                     ChatScreen(
@@ -626,12 +550,10 @@ fun Main() {
                         callManager = callManager
                     )
                 }
-
                 composable(Routes.ScreenCall + "/{chatId}/{toUserId}/{isVideoCall}") {
                     val chatId = it.arguments?.getString("chatId") ?: ""
                     val toUserId = it.arguments?.getString("toUserId") ?: ""
                     val isVideoCall = it.arguments?.getString("isVideoCall")?.toBoolean() ?: false
-
                     ScreenCall(
                         isVideoCall = isVideoCall,
                         navController = navController,
@@ -655,7 +577,6 @@ fun Main() {
                         }
                     )
                 }
-
                 // Écran Résultat CV
                 composable(
                     route = "cv_result/{data}",
@@ -665,44 +586,54 @@ fun Main() {
                     if (json != null) {
                         // Parse JSON safely outside of Composable selection if possible, or just parse directly
                         val decodedJson = try {
-                             java.net.URLDecoder.decode(json, "UTF-8")
-                        } catch (_: Exception) { null }
-
+                            java.net.URLDecoder.decode(json, "UTF-8")
+                        } catch (_: Exception) {
+                            null
+                        }
                         if (decodedJson != null) {
-                             val result = try {
-                                 com.google.gson.Gson().fromJson(decodedJson, sim2.app.talleb_5edma.models.CvStructuredResponse::class.java)
-                             } catch (_: Exception) { null }
-
-                             if (result != null) {
-                                 CvResultScreen(
-                                     cvResult = result,
-                                     onBackClick = { navController.popBackStack() }
-                                 )
-                             } else {
-                                 // Handle error or pop back
-                                 LaunchedEffect(Unit) { navController.popBackStack() }
-                             }
+                            val result = try {
+                                com.google.gson.Gson().fromJson(decodedJson, sim2.app.talleb_5edma.models.CvStructuredResponse::class.java)
+                            } catch (_: Exception) {
+                                null
+                            }
+                            if (result != null) {
+                                CvResultScreen(
+                                    cvResult = result,
+                                    onBackClick = { navController.popBackStack() }
+                                )
+                            } else {
+                                // Handle error or pop back
+                                LaunchedEffect(Unit) { navController.popBackStack() }
+                            }
                         } else {
-                             LaunchedEffect(Unit) { navController.popBackStack() }
+                            LaunchedEffect(Unit) { navController.popBackStack() }
                         }
                     } else {
-                         LaunchedEffect(Unit) { navController.popBackStack() }
+                        LaunchedEffect(Unit) { navController.popBackStack() }
                     }
                 }
-                 // AI Interview Training
-                 composable(Routes.AiInterviewTraining + "/{chatId}/{mode}") { backStackEntry ->
-                     val chatId = backStackEntry.arguments?.getString("chatId") ?: ""
-                     val mode = backStackEntry.arguments?.getString("mode") ?: "coaching"
-                     
-                     AiInterviewTrainingScreen(
-                         navController = navController,
-                         chatId = chatId,
-                         token = getToken(context),
-                         initialMode = mode
-                     )
-                 }
+                // AI Interview Training
+                composable(Routes.AiInterviewTraining + "/{chatId}/{mode}") { backStackEntry ->
+                    val chatId = backStackEntry.arguments?.getString("chatId") ?: ""
+                    val mode = backStackEntry.arguments?.getString("mode") ?: "coaching"
+                    AiInterviewTrainingScreen(
+                        navController = navController,
+                        chatId = chatId,
+                        token = getToken(context),
+                        initialMode = mode
+                    )
+                }
+                // Time Management additional routes from old version
+                composable(Routes.ScreenRoutineAnalysis) {
+                    RoutineAnalysisScreen(navController, currentToken)
+                }
+                composable(Routes.ScreenScheduleImport) {
+                    ScheduleUploadScreen(navController, currentToken)
+                }
+                composable(Routes.ScreenAiMatching) {
+                    MatchingScreen(navController, currentToken)
+                }
             }
-
             // GLOBAL CALL POPUP - This will appear over any screen when there's an incoming call
             GlobalCallNotificationPopup(
                 callManager = callManager,
@@ -710,7 +641,6 @@ fun Main() {
                 callState = callState,
                 callData = callData
             )
-
             // GLOBAL INTERVIEW INVITATION POPUP (WebSocket)
             GlobalInterviewInvitationPopup(
                 navController = navController,
@@ -737,7 +667,6 @@ fun GlobalCallNotificationPopup(
             "${Routes.ScreenCall}/${callData.chatId}/${callData.toUserId}/${callData.isVideoCall}"
         )
     }
-
     // Show incoming call notification (existing code)
     else if (callState is WebSocketCallManager.CallState.IncomingCall) {
         scope.launch {
@@ -749,11 +678,8 @@ fun GlobalCallNotificationPopup(
                 println("Error fetching profile image: ${e.message}")
             }
         }
-
-
         AlertDialog(
-            onDismissRequest = {
-                // Don't allow dismissing by clicking outside
+            onDismissRequest = { // Don't allow dismissing by clicking outside
             },
             title = { Text("📞 Incoming Call") },
             text = {
@@ -783,9 +709,7 @@ fun GlobalCallNotificationPopup(
             },
             dismissButton = {
                 Button(
-                    onClick = {
-                        callManager.rejectCall()
-                    },
+                    onClick = { callManager.rejectCall() },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC3545)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -801,7 +725,6 @@ fun NativePermissionHandler(
     onPermissionsGranted: () -> Unit
 ) {
     var permissionsRequested by remember { mutableStateOf(false) }
-
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { results ->
@@ -813,7 +736,6 @@ fun NativePermissionHandler(
             onPermissionsGranted()
         }
     }
-
     LaunchedEffect(Unit) {
         if (!permissionsRequested) {
             val permissions = buildList {
@@ -821,7 +743,6 @@ fun NativePermissionHandler(
                 add(Manifest.permission.RECORD_AUDIO)
                 add(Manifest.permission.ACCESS_FINE_LOCATION)
                 add(Manifest.permission.ACCESS_COARSE_LOCATION)
-
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     add(Manifest.permission.POST_NOTIFICATIONS)
                     add(Manifest.permission.READ_MEDIA_IMAGES)
@@ -829,12 +750,10 @@ fun NativePermissionHandler(
                     add(Manifest.permission.READ_MEDIA_AUDIO)
                 }
             }.toTypedArray()
-
             permissionLauncher.launch(permissions)
             permissionsRequested = true
         }
     }
-
     // Show loading screen while requesting permissions
     if (!permissionsRequested) {
         Surface(
@@ -851,6 +770,7 @@ fun NativePermissionHandler(
         }
     }
 }
+
 /* ====== UI Components from Second Main ====== */
 
 @Composable
@@ -887,10 +807,7 @@ private fun PremiumTopBar(
                         modifier = Modifier.size(28.dp)
                     )
                 }
-                
                 Spacer(modifier = Modifier.width(12.dp))
-
-
                 Icon(
                     painter = androidx.compose.ui.res.painterResource(id = R.drawable.logo),
                     contentDescription = "Logo",
@@ -898,7 +815,6 @@ private fun PremiumTopBar(
                     modifier = Modifier.size(50.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
-
                 // Title and Subtitle
                 Column {
                     Text(
@@ -907,10 +823,8 @@ private fun PremiumTopBar(
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
-
                 }
             }
-
             // Right Section: Bell + Settings + Profile
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // Notification Bell
@@ -937,11 +851,7 @@ private fun PremiumTopBar(
                         )
                     }
                 }
-
-
-
                 Spacer(modifier = Modifier.width(16.dp))
-
                 // Profile Initials
                 val initials = user?.nom?.take(2)?.uppercase() ?: "JD"
                 Box(
@@ -968,8 +878,6 @@ private fun PremiumTopBar(
     }
 }
 
-
-
 @Composable
 private fun PremiumBottomBar(
     items: List<BottomDest>,
@@ -993,7 +901,6 @@ private fun PremiumBottomBar(
         ) {
             items.forEach { dest ->
                 val selected = dest.route == currentRoute
-                
                 if (dest is BottomDest.Add) {
                     // Central FAB
                     Box(
@@ -1045,9 +952,7 @@ private fun PremiumBottomBar(
                                 modifier = Modifier.size(24.dp)
                             )
                         }
-                        
                         Spacer(modifier = Modifier.height(4.dp))
-                        
                         Text(
                             text = dest.label,
                             fontSize = 10.sp,
@@ -1062,7 +967,6 @@ private fun PremiumBottomBar(
 }
 
 /* ====== Settings screen avec bouton Mes préférences ====== */
-
 @Composable
 private fun SettingsScreen(
     onOpenPreferences: () -> Unit,
@@ -1081,7 +985,6 @@ private fun SettingsScreen(
             fontSize = 20.sp
         )
         Spacer(Modifier.height(24.dp))
-
         Button(
             onClick = onOpenPreferences,
             modifier = Modifier
@@ -1091,9 +994,7 @@ private fun SettingsScreen(
         ) {
             Text("Mes préférences")
         }
-
         Spacer(Modifier.height(16.dp))
-
         // New Map Button
         Button(
             onClick = onOpenMap,
@@ -1168,27 +1069,24 @@ fun GlobalInterviewInvitationPopup(
 ) {
     println("👀 GlobalInterviewInvitationPopup: Composed with userId=$currentUserId")
     if (currentUserId == null) return
-    
     val repository = remember { InterviewInvitationRepository() }
     val scope = rememberCoroutineScope()
-    
     // ✨ COLLECT WEBSOCKET EVENTS INSTEAD OF POLLING ✨
     val pendingInvitation by interviewWsManager.pendingInvitation.collectAsState()
     val wsConnected by interviewWsManager.connectionStatus.collectAsState()
-    
     // Log connection status
     LaunchedEffect(wsConnected) {
         println("🔌 Interview WebSocket connected: $wsConnected")
     }
-    
     // Show popup when invitation is received via WebSocket
     pendingInvitation?.let { invitation ->
         println("🎉 Showing invitation popup for: ${invitation.fromUserName}")
-        
         AlertDialog(
             onDismissRequest = { /* Prevent dismiss */ },
             title = { Text("📄 Interview Invitation") },
-            text = { Text("${invitation.fromUserName} has invited you to an AI Mock Interview. Do you want to accept?") },
+            text = {
+                Text("${invitation.fromUserName} has invited you to an AI Mock Interview. Do you want to accept?")
+            },
             confirmButton = {
                 Button(
                     onClick = {
@@ -1200,7 +1098,6 @@ fun GlobalInterviewInvitationPopup(
                                 if (response.success) {
                                     // Clear the WebSocket pending invitation
                                     interviewWsManager.clearPendingInvitation()
-                                    
                                     // Navigate to interview mode
                                     withContext(Dispatchers.Main) {
                                         navController.navigate("${Routes.AiInterviewTraining}/${invitation.chatId}/employer_interview")
@@ -1212,7 +1109,9 @@ fun GlobalInterviewInvitationPopup(
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF28A745))
-                ) { Text("Accept") }
+                ) {
+                    Text("Accept")
+                }
             },
             dismissButton = {
                 Button(
@@ -1230,9 +1129,10 @@ fun GlobalInterviewInvitationPopup(
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC3545))
-                ) { Text("Decline") }
+                ) {
+                    Text("Decline")
+                }
             }
         )
     }
 }
-
