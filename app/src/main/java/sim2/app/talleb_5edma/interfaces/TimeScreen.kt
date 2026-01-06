@@ -3,9 +3,13 @@ package sim2.app.talleb_5edma.interfaces
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -20,7 +24,10 @@ import androidx.compose.ui.unit.sp
 fun TimeScreen(
     userName: String,
     onOpenCalendar: () -> Unit,
-    onOpenAvailability: () -> Unit = {}
+    onOpenAvailability: () -> Unit = {},
+    onOpenRoutineAnalysis: () -> Unit = {},
+    onOpenScheduleUpload: () -> Unit = {},
+    onOpenAiMatching: () -> Unit = {}
 ) {
     val RedDark = Color(0xFFD32F2F)
     val SoftGray = Color(0xFF888888)
@@ -29,6 +36,7 @@ fun TimeScreen(
     Column(
         Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         horizontalAlignment = Alignment.Start
     ) {
@@ -133,6 +141,75 @@ fun TimeScreen(
         ) {
             Text("Gérer mes disponibilités", color = RedDark, fontWeight = FontWeight.Medium)
         }
+
+        Spacer(Modifier.height(12.dp))
+
+        // 🔹 Bouton "Analyser ma routine"
+        OutlinedButton(
+            onClick = onOpenRoutineAnalysis,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(44.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = RedDark
+            ),
+            border = BorderStroke(1.5.dp, RedDark)
+        ) {
+            Text("Analyser ma routine", color = RedDark, fontWeight = FontWeight.Medium)
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // 🔹 Bouton "Importer emploi du temps PDF"
+        Button(
+            onClick = onOpenScheduleUpload,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(44.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF7C4DFF)
+            )
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.DateRange,
+                    contentDescription = null,
+                    tint = Color.White
+                )
+                Text("Importer emploi du temps PDF", color = Color.White, fontWeight = FontWeight.Medium)
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // 🔹 Bouton "AI Matching - Trouver des opportunités"
+        Button(
+            onClick = onOpenAiMatching,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(44.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF10B981)
+            )
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Psychology,
+                    contentDescription = null,
+                    tint = Color.White
+                )
+                Text("AI Matching - Trouver des opportunités", color = Color.White, fontWeight = FontWeight.Medium)
+            }
+        }
+
+        // Padding en bas pour éviter que le bouton soit caché par la bottom bar
+        Spacer(Modifier.height(80.dp))
     }
 }
 

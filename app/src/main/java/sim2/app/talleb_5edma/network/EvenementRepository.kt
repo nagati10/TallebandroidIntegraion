@@ -98,12 +98,44 @@ class EvenementRepository {
         startDate: String,
         endDate: String
     ): List<Evenement> {
-        return client.get("$BASE_URL/evenements/date-range") {
+        println("CatLog: EvenementRepository - Getting events by date range: $startDate to $endDate")
+
+        val response = client.get("$BASE_URL/evenements/date-range") {
             contentType(ContentType.Application.Json)
             header("Authorization", "Bearer $token")
             parameter("startDate", startDate)
             parameter("endDate", endDate)
-        }.body()
+        }
+
+        println("CatLog: Date range API response status: ${response.status.value}")
+
+        return try {
+            // Try to parse as array first (direct list)
+            response.body<List<Evenement>>().also {
+                println("CatLog: Successfully parsed ${it.size} events from date range API")
+            }
+        } catch (e: Exception) {
+            // If it fails, try to parse as ApiResponse wrapper
+            try {
+                val apiResponse = response.body<ApiResponse<List<Evenement>>>()
+                (apiResponse.data ?: emptyList()).also {
+                    println("CatLog: Parsed ${it.size} events from ApiResponse wrapper")
+                }
+            } catch (e2: Exception) {
+                // If that fails, try other possible structures
+                try {
+                    val wrapper = response.body<EvenementsResponse>()
+                    (wrapper.data ?: wrapper.evenements ?: wrapper.events ?: emptyList()).also {
+                        println("CatLog: Parsed ${it.size} events from EvenementsResponse wrapper")
+                    }
+                } catch (e3: Exception) {
+                    // If all fail, log error and return empty list
+                    println("CatLog: Error parsing date range events response: ${e3.message}")
+                    println("CatLog: Raw response body: ${response.body<String>()}")
+                    emptyList()
+                }
+            }
+        }
     }
 
     // ==================== GET EVENTS BY TYPE ====================

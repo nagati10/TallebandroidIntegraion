@@ -29,14 +29,15 @@ import io.ktor.serialization.gson.gson
 
 // These imports are for logging network requests and responses
 // They help us see what's happening "under the hood" of our internet messenger
-//import io.ktor.client.plugins.logging.LogLevel
-//import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logging
+import android.util.Log
 
 
 // ==================== BASE URL CONSTANT ====================
 
-//const val BASE_URL = "http://10.0.2.2:3005"
-const val BASE_URL = "https://talleb-5edma.onrender.com"
+//const val BASE_URL = "http://10.0.2.2:3005"  // Émulateur local
+const val BASE_URL = "https://talleb-5edma.onrender.com"  // Backend Render
 
 
 // ==================== HTTP CLIENT CONFIGURATION ====================
@@ -63,10 +64,15 @@ val client = HttpClient(CIO) {
 
     // ==================== LOGGING CONFIGURATION ====================
     // This helps us see what's happening with network requests
-    /* install(Logging) {
-         // Log all network requests and responses
-         level = LogLevel.ALL
-     }*/
+    install(Logging) {
+        // Log all network requests and responses
+        level = LogLevel.ALL
+        logger = object : io.ktor.client.plugins.logging.Logger {
+            override fun log(message: String) {
+                Log.d("Ktor", message)
+            }
+        }
+    }
 
     // ==================== CONTENT NEGOTIATION SETUP ====================
     // This tells our messenger: "Install the ability to understand different data formats"

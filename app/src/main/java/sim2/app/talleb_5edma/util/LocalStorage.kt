@@ -151,3 +151,56 @@ fun verifyDataCleared(context: Context): Boolean {
 
     return allCleared
 }
+
+// ==================== ROUTINE ANALYSIS CACHE ====================
+
+const val ROUTINE_CACHE_PREFS = "routine_cache"
+const val ROUTINE_CACHE_KEY = "routine_analysis_data"
+const val ROUTINE_CACHE_TIMESTAMP_KEY = "routine_analysis_timestamp"
+const val CACHE_DURATION_MS = 5 * 60 * 1000L // 5 minutes
+
+fun getRoutineCachePrefs(context: Context): SharedPreferences {
+    return context.getSharedPreferences(ROUTINE_CACHE_PREFS, Context.MODE_PRIVATE)
+}
+
+fun saveRoutineAnalysisCache(context: Context, data: String) {
+    getRoutineCachePrefs(context).edit {
+        putString(ROUTINE_CACHE_KEY, data)
+        putLong(ROUTINE_CACHE_TIMESTAMP_KEY, System.currentTimeMillis())
+        apply()
+    }
+    println("CatLog: Routine analysis cache saved")
+}
+
+fun getRoutineAnalysisCache(context: Context): String? {
+    val prefs = getRoutineCachePrefs(context)
+    val timestamp = prefs.getLong(ROUTINE_CACHE_TIMESTAMP_KEY, 0)
+    val now = System.currentTimeMillis()
+    
+    if (now - timestamp > CACHE_DURATION_MS) {
+        println("CatLog: Routine analysis cache expired")
+        clearRoutineAnalysisCache(context)
+        return null
+    }
+    
+    val cached = prefs.getString(ROUTINE_CACHE_KEY, null)
+    if (cached != null) {
+        println("CatLog: Routine analysis cache found (age: ${(now - timestamp) / 1000}s)")
+    }
+    return cached
+}
+
+fun clearRoutineAnalysisCache(context: Context) {
+    getRoutineCachePrefs(context).edit {
+        clear()
+        apply()
+    }
+    println("CatLog: Routine analysis cache cleared")
+}
+
+fun isRoutineCacheValid(context: Context): Boolean {
+    val prefs = getRoutineCachePrefs(context)
+    val timestamp = prefs.getLong(ROUTINE_CACHE_TIMESTAMP_KEY, 0)
+    val now = System.currentTimeMillis()
+    return (now - timestamp) <= CACHE_DURATION_MS && prefs.getString(ROUTINE_CACHE_KEY, null) != null
+}
