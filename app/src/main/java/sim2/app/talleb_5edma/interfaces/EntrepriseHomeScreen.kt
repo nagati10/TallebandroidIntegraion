@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Apartment
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Schedule
@@ -124,14 +125,8 @@ fun EntrepriseHomeScreen(
     )
 
     Scaffold(
-        containerColor = Color.Transparent,
-        bottomBar = {
-            EntrepriseBottomBar(
-                selected = BottomDest.Home.route,
-                onSelect = { route -> navController?.navigate(route) },
-                onFabClick = { navController?.navigate(Routes.ScreenCreateOffre) }
-            )
-        }
+        containerColor = Color.Transparent
+        // Bottom bar is now handled by MainActivity to avoid duplication
     ) { padding ->
 
         Box(
@@ -410,9 +405,10 @@ private fun GradientMainButton(
 
 /**
  * Bottom bar avec FAB centré comme sur la capture
+ * Now used as the main bottom navigation bar for the entire app
  */
 @Composable
-private fun EntrepriseBottomBar(
+fun EntrepriseBottomBar(
     selected: String,
     onSelect: (String) -> Unit,
     onFabClick: () -> Unit
@@ -429,10 +425,10 @@ private fun EntrepriseBottomBar(
                 label = { Text("Accueil") }
             )
             NavigationBarItem(
-                selected = selected == "calendar",
-                onClick = { onSelect("calendar") },
-                icon = { Icon(Icons.Filled.DateRange, contentDescription = null) },
-                label = { Text("Calendrier") }
+                selected = selected == BottomDest.Fav.route,
+                onClick = { onSelect(BottomDest.Fav.route) },
+                icon = { Icon(Icons.Filled.FavoriteBorder, contentDescription = null) },
+                label = { Text("Favoris") }
             )
             // espace pour le FAB au centre
             Spacer(Modifier.weight(1f))
@@ -441,7 +437,7 @@ private fun EntrepriseBottomBar(
                 selected = selected == BottomDest.Time.route,
                 onClick = { onSelect(BottomDest.Time.route) },
                 icon = { Icon(Icons.Filled.Schedule, contentDescription = null) },
-                label = { Text("Mes offres") }
+                label = { Text("Temps") }
             )
             NavigationBarItem(
                 selected = selected == BottomDest.More.route,

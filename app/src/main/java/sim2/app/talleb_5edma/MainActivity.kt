@@ -81,6 +81,7 @@ import kotlinx.coroutines.withContext
 import sim2.app.talleb_5edma.network.WebSocketCallManager
 import sim2.app.talleb_5edma.interfaces.AccueilScreen
 import sim2.app.talleb_5edma.interfaces.EntrepriseHomeScreen
+import sim2.app.talleb_5edma.interfaces.EntrepriseBottomBar
 import sim2.app.talleb_5edma.interfaces.AvailabilityScreen
 import sim2.app.talleb_5edma.interfaces.CalendarScreen
 import sim2.app.talleb_5edma.interfaces.ExamModeScreen
@@ -143,7 +144,7 @@ sealed class BottomDest(val route: String, val label: String, val icon: ImageVec
     data object Home : BottomDest("accueil", "Accueil", Icons.Filled.Home)
     data object Fav : BottomDest("favoris", "Favoris", Icons.Filled.FavoriteBorder)
     data object Add : BottomDest("create_offer", "Publier", Icons.Filled.Add)
-    data object Time : BottomDest("temps", "Mes offres", Icons.Filled.AccessTime) // Renamed label to match screenshot roughly or keep logic
+    data object Time : BottomDest("temps", "Temps", Icons.Filled.AccessTime)
     data object More : BottomDest("plus", "Profil", Icons.Filled.Settings) // Renamed label to match screenshot roughly
 }
 
@@ -201,7 +202,7 @@ fun Main() {
         Routes.ScreenUpdateOffre,
         Routes.AiInterviewTraining,
         Routes.Splash,
-        Routes.ScreenHomeEntreprise,
+        // Removed Routes.ScreenHomeEntreprise so bottom bar shows for enterprise home
     )
     val showBottomBar = currentRoute !in authRoutes && currentToken.isNotEmpty()
     val showTopBar = currentRoute !in authRoutes && currentToken.isNotEmpty()
@@ -232,7 +233,7 @@ fun Main() {
             }
         }
     }
-    val startingRoute = if (currentToken.isNotEmpty()) BottomDest.Home.route else Routes.Screen1
+    val startingRoute = if (currentToken.isNotEmpty() && currentUser != null) BottomDest.Home.route else Routes.Screen1
     // FIX: Load user data when token changes
     LaunchedEffect(currentToken) {
         println("CatLog: MainActivity - Token effect - Token: '${currentToken.take(10)}...' (${currentToken.length} chars)")
@@ -312,30 +313,15 @@ fun Main() {
         },
         bottomBar = {
             if (showBottomBar) {
-                PremiumBottomBar(
-                    items = listOf(
-                        BottomDest.Home,
-                        BottomDest.Fav,
-                        BottomDest.Add,
-                        BottomDest.Time,
-                        BottomDest.More
-                    ),
-                    currentRoute = currentRoute,
+                // Determine selected route - treat enterprise home as home route
+                val selectedRoute = when (currentRoute) {
+                    Routes.ScreenHomeEntreprise -> BottomDest.Home.route
+                    else -> currentRoute
+                }
+                EntrepriseBottomBar(
+                    selected = selectedRoute,
                     onSelect = { route ->
-                        if (route == BottomDest.Add.route) {
-                            // Check if user is organization
-                            if (currentUser?.isOrganization == true) {
-                                navController.navigate(Routes.ScreenCreateOffre)
-                            } else {
-                                // Use the switch state to navigate
-                                val targetRoute = if (isProfessionalMode) {
-                                    Routes.ScreenCreateOffrePro
-                                } else {
-                                    Routes.ScreenCreateOffreCasual
-                                }
-                                navController.navigate(targetRoute)
-                            }
-                        } else if (route == BottomDest.Home.route) {
+                        if (route == BottomDest.Home.route) {
                             // Rediriger vers l'accueil entreprise si l'utilisateur est une entreprise
                             val destination = if (currentUser?.isOrganization == true) {
                                 Routes.ScreenHomeEntreprise
@@ -347,12 +333,40 @@ fun Main() {
                                 restoreState = true
                                 popUpTo(BottomDest.Home.route) { saveState = true }
                             }
-                        } else if (route != currentRoute) {
-                            navController.navigate(route) {
+                        } else if (route == BottomDest.Fav.route) {
+                            // Navigate to Favorites screen
+                            navController.navigate(BottomDest.Fav.route) {
                                 launchSingleTop = true
                                 restoreState = true
                                 popUpTo(BottomDest.Home.route) { saveState = true }
                             }
+                        } else if (route == BottomDest.Time.route) {
+                            // Navigate to TimeScreen (Time Management)
+                            navController.navigate(BottomDest.Time.route) {
+                                launchSingleTop = true
+                                restoreState = true
+                                popUpTo(BottomDest.Home.route) { saveState = true }
+                            }
+                        } else if (route == BottomDest.More.route) {
+                            navController.navigate(BottomDest.More.route) {
+                                launchSingleTop = true
+                                restoreState = true
+                                popUpTo(BottomDest.Home.route) { saveState = true }
+                            }
+                        }
+                    },
+                    onFabClick = {
+                        // Check if user is organization
+                        if (currentUser?.isOrganization == true) {
+                            navController.navigate(Routes.ScreenCreateOffre)
+                        } else {
+                            // Use the switch state to navigate
+                            val targetRoute = if (isProfessionalMode) {
+                                Routes.ScreenCreateOffrePro
+                            } else {
+                                Routes.ScreenCreateOffreCasual
+                            }
+                            navController.navigate(targetRoute)
                         }
                     }
                 )
@@ -520,7 +534,10 @@ fun Main() {
                 composable("calendar") {
                     CalendarScreen(
                         onBack = { navController.popBackStack() },
-                        onManageAvailability = { navController.navigate(AVAILABILITY_ROUTE) }
+                        onManageAvailability = {
+                            navController.navigate(AVAILABILITY_ROUTE)
+                        },
+                        navController = navController
                     )
                 }
                 // Disponibilités
@@ -878,93 +895,6 @@ private fun PremiumTopBar(
     }
 }
 
-@Composable
-private fun PremiumBottomBar(
-    items: List<BottomDest>,
-    currentRoute: String,
-    onSelect: (String) -> Unit
-) {
-    Surface(
-        color = Color.White,
-        shadowElevation = 16.dp,
-        tonalElevation = 8.dp,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .navigationBarsPadding(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            items.forEach { dest ->
-                val selected = dest.route == currentRoute
-                if (dest is BottomDest.Add) {
-                    // Central FAB
-                    Box(
-                        modifier = Modifier
-                            .offset(y = (-24).dp) // Move up slightly
-                            .size(56.dp)
-                            .shadow(8.dp, RoundedCornerShape(16.dp))
-                            .background(
-                                brush = Brush.linearGradient(
-                                    colors = listOf(Color(0xFFE040FB), Color(0xFF7C4DFF))
-                                ),
-                                shape = RoundedCornerShape(16.dp)
-                            )
-                            .clickable { onSelect(dest.route) },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = "Publier",
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                } else {
-                    // Standard Icon
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier
-                            .clickable(
-                                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                                indication = null // Remove ripple for cleaner look
-                            ) { onSelect(dest.route) }
-                            .padding(8.dp)
-                    ) {
-                        // Icon Container
-                        Box(
-                            modifier = Modifier
-                                .size(if (selected) 40.dp else 24.dp)
-                                .background(
-                                    color = if (selected) Color(0xFF7C4DFF) else Color.Transparent,
-                                    shape = RoundedCornerShape(12.dp)
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = dest.icon,
-                                contentDescription = dest.label,
-                                tint = if (selected) Color.White else Color.Gray,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = dest.label,
-                            fontSize = 10.sp,
-                            color = if (selected) Color(0xFF7C4DFF) else Color.Gray,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
 
 /* ====== Settings screen avec bouton Mes préférences ====== */
 @Composable
