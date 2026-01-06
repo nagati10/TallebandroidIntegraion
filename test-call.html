@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebRTC Call Server Test - WORKING</title>
+    <style>
+        body { font-family: Arial; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .connected { background: #d4edda; color: #155724; }
+        .disconnected { background: #f8d7da; color: #721c24; }
+        .event { background: #e2e3e5; padding: 8px; margin: 5px 0; border-radius: 3px; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        .log { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 5px; max-height: 300px; overflow-y: auto; }
+        input { padding: 5px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✅ WebRTC Call Server Test - WORKING</h1>
+        
+        <div id="status" class="status disconnected">
+            ❌ Disconnected from server
+        </div>
+
+        <div>
+            <h3>Server Connection</h3>
+            <label>Server URL: </label>
+            <input type="text" id="serverUrl" value="https://talleb-5edma.onrender.com" style="width: 400px;">
+            <button onclick="connect()">Connect</button>
+            <button onclick="disconnect()">Disconnect</button>
+        </div>
+
+        <div>
+            <h3>Test Room</h3>
+            <input type="text" id="roomId" value="test-room-123" placeholder="Room ID">
+            <input type="text" id="userId" value="user-1" placeholder="User ID">
+            <input type="text" id="userName" value="Test User" placeholder="User Name">
+            <button onclick="joinRoom()">Join Room</button>
+            <button onclick="leaveRoom()">Leave Room</button>
+        </div>
+
+        <div>
+            <h3>Multi-User Test</h3>
+            <button onclick="openSecondTab()">Open Second Test Tab</button>
+            <button onclick="testSignaling()">Test WebRTC Signaling</button>
+        </div>
+
+        <div>
+            <h3>Event Log</h3>
+            <button onclick="clearLog()">Clear Log</button>
+            <div id="log" class="log"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+        let socket = null;
+        const log = document.getElementById('log');
+        const status = document.getElementById('status');
+
+        function logEvent(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const eventDiv = document.createElement('div');
+            eventDiv.className = 'event';
+            eventDiv.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            log.appendChild(eventDiv);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function clearLog() {
+            log.innerHTML = '';
+        }
+
+        function connect() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            
+            try {
+                logEvent(`🔗 Connecting to: ${serverUrl}`);
+                
+                socket = io(serverUrl, {
+                    transports: ['websocket', 'polling'],
+                    timeout: 10000
+                });
+
+                socket.on('connect', () => {
+                    status.className = 'status connected';
+                    status.innerHTML = `✅ Connected to server (ID: ${socket.id})`;
+                    logEvent('🎉 Successfully connected to server!');
+                });
+
+                socket.on('disconnect', (reason) => {
+                    status.className = 'status disconnected';
+                    status.innerHTML = '❌ Disconnected from server';
+                    logEvent(`Disconnected: ${reason}`);
+                });
+
+                socket.on('connect_error', (error) => {
+                    status.className = 'status disconnected';
+                    status.innerHTML = '❌ Connection failed';
+                    logEvent(`Connection error: ${error.message}`);
+                });
+
+                // Event handlers for call functionality
+                socket.on('user-joined', (data) => {
+                    logEvent(`📱 <strong>USER JOINED:</strong> ${data.userName} (Socket: ${data.socketId})`);
+                });
+
+                socket.on('user-left', (data) => {
+                    logEvent(`👋 <strong>USER LEFT:</strong> Socket ${data.socketId}`);
+                });
+
+                socket.on('room-users', (users) => {
+                    logEvent(`👥 <strong>ROOM USERS:</strong> ${users.length} user(s)`);
+                    users.forEach(user => {
+                        logEvent(`   👤 ${user.userName} - ${user.socketId}`);
+                    });
+                });
+
+                socket.on('offer', (data) => {
+                    logEvent(`📨 <strong>OFFER RECEIVED</strong> from ${data.socketId}`);
+                });
+
+                socket.on('answer', (data) => {
+                    logEvent(`📨 <strong>ANSWER RECEIVED</strong> from ${data.socketId}`);
+                });
+
+                socket.on('ice-candidate', (data) => {
+                    logEvent(`🧊 <strong>ICE CANDIDATE</strong> from ${data.socketId}`);
+                });
+
+            } catch (error) {
+                logEvent(`❌ Connection failed: ${error.message}`);
+            }
+        }
+
+        function disconnect() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+                logEvent('🔌 Disconnected manually');
+            }
+        }
+
+        function joinRoom() {
+            if (!socket || !socket.connected) {
+                logEvent('❌ Not connected to server!');
+                return;
+            }
+
+            const roomId = document.getElementById('roomId').value;
+            const userId = document.getElementById('userId').value;
+            const userName = document.getElementById('userName').value;
+
+            socket.emit('join-call', {
+                roomId: roomId,
+                userId: userId,
+                userName: userName
+            });
+
+            logEvent(`🚪 Joining room: "${roomId}" as "${userName}"`);
+        }
+
+        function leaveRoom() {
+            if (socket) {
+                disconnect();
+                logEvent('🚪 Left room');
+            }
+        }
+
+        function openSecondTab() {
+            const url = window.location.href;
+            window.open(url, '_blank');
+            logEvent('📑 Opened second test tab - join same room to test multi-user');
+        }
+
+        function testSignaling() {
+            if (!socket || !socket.connected) {
+                logEvent('❌ Not connected to server!');
+                return;
+            }
+
+            // Test sending signaling messages
+            logEvent('📨 Testing WebRTC signaling messages...');
+            
+            // These would normally be sent to specific socket IDs
+            // For testing, we'll just log that we're ready to send
+            logEvent('Ready to send OFFER, ANSWER, and ICE candidates when users are connected');
+        }
+
+        // Auto-connect for quick testing
+        window.onload = function() {
+            logEvent('Page loaded - Ready to test your call server!');
+            // Uncomment to auto-connect:
+            // connect();
+        };
+    </script>
+</body>
+</html>
