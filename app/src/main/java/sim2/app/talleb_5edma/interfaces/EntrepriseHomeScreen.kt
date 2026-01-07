@@ -1,6 +1,7 @@
 package sim2.app.talleb_5edma.interfaces
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -275,7 +276,10 @@ fun EntrepriseHomeScreen(
                                 iconBg = Color(0xFF7C4DFF).copy(alpha = 0.12f),
                                 iconTint = Color(0xFF7C4DFF),
                                 value = offresCount.toString(),
-                                label = "OFFRES"
+                                label = "OFFRES",
+                                onClick = {
+                                    navController?.navigate(Routes.ScreenMesOffresEntreprise)
+                                }
                             )
                             MiniStatCard(
                                 modifier = Modifier.weight(1f),
@@ -318,10 +322,19 @@ private fun MiniStatCard(
     iconBg: Color,
     iconTint: Color,
     value: String,
-    label: String
+    label: String,
+    onClick: (() -> Unit)? = null
 ) {
     Card(
-        modifier = modifier.height(112.dp),
+        modifier = modifier
+            .height(112.dp)
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(onClick = onClick)
+                } else {
+                    Modifier
+                }
+            ),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
